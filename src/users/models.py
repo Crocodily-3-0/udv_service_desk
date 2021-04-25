@@ -1,5 +1,3 @@
-# from tokenize import String
-
 from fastapi_users.db import SQLAlchemyBaseUserTable, SQLAlchemyUserDatabase
 from sqlalchemy import Column, Integer, Boolean, ForeignKey, DateTime, sql, String
 
@@ -14,7 +12,7 @@ class EmployeeTable(Base, SQLAlchemyBaseUserTable):
     surname = Column(String, nullable=False)
     patronymic = Column(String, nullable=True)
     is_owner = Column(Boolean, default=False, nullable=False)
-    client = Column(Integer, ForeignKey('client.id'))
+    client = Column(Integer, ForeignKey('client.id'))  # TODO сделать проверку на существующего владельца клиента
     date_reg = Column(DateTime(timezone=True), server_default=sql.func.now())
     date_block = Column(DateTime, default=None, nullable=True)
     # avatar

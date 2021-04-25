@@ -11,11 +11,18 @@ class Employee(models.BaseUser):
     patronymic: Optional[str]
     is_owner: bool
     client: int
-    date_reg: datetime
-    date_block: datetime
+    date_block: Optional[datetime]
 
 
 class EmployeeCreate(models.BaseUserCreate):
+    name: str
+    surname: str
+    patronymic: Optional[str]
+    is_owner: bool = False
+    client: int
+    date_reg: datetime  # TODO попробовать удалить данное поле из регистрации. Пока без нее не работет
+    date_block: Optional[datetime]
+
     @validator('password')
     def valid_password(cls, v: str):
         if len(v) < 6:
@@ -28,16 +35,21 @@ class EmployeeUpdate(Employee, models.BaseUserUpdate):
 
 
 class EmployeeDB(Employee, models.BaseUserDB):
-    pass
+    date_reg: datetime
 
 
 class Developer(models.BaseUser):
     name: str
     surname: str
     patronymic: Optional[str]
+    is_superuser: Optional[bool] = True
 
 
 class DeveloperCreate(models.BaseUserCreate):
+    name: str
+    surname: str
+    patronymic: Optional[str]
+
     @validator('password')
     def valid_password(cls, v: str):
         if len(v) < 6:
