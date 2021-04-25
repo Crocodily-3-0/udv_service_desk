@@ -5,7 +5,7 @@ from pydantic import validator
 from typing import Optional
 
 
-class Employee(models.BaseUser):
+class User(models.BaseUser):
     name: str
     surname: str
     patronymic: Optional[str]
@@ -14,7 +14,7 @@ class Employee(models.BaseUser):
     date_block: Optional[datetime]
 
 
-class EmployeeCreate(models.BaseUserCreate):
+class UserCreate(models.BaseUserCreate):
     name: str
     surname: str
     patronymic: Optional[str]
@@ -30,36 +30,9 @@ class EmployeeCreate(models.BaseUserCreate):
         return v
 
 
-class EmployeeUpdate(Employee, models.BaseUserUpdate):
+class UserUpdate(User, models.BaseUserUpdate):
     pass
 
 
-class EmployeeDB(Employee, models.BaseUserDB):
+class UserDB(User, models.BaseUserDB):
     date_reg: datetime
-
-
-class Developer(models.BaseUser):
-    name: str
-    surname: str
-    patronymic: Optional[str]
-    is_superuser: Optional[bool] = True
-
-
-class DeveloperCreate(models.BaseUserCreate):
-    name: str
-    surname: str
-    patronymic: Optional[str]
-
-    @validator('password')
-    def valid_password(cls, v: str):
-        if len(v) < 6:
-            raise ValueError('Password should be at least 6 characters')
-        return v
-
-
-class DeveloperUpdate(Developer, models.BaseUserUpdate):
-    pass
-
-
-class DeveloperDB(Developer, models.BaseUserDB):
-    pass
