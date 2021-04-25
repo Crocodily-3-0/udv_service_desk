@@ -1,6 +1,6 @@
 from ..db.db import database
 from .models import clients
-from ..users.models import employees
+from ..users.models import users
 
 
 async def get_clients():
@@ -13,6 +13,6 @@ async def get_client(id: int):
     result = await database.fetch_one(query=query)
     if result:
         result = dict(result)
-        query = employees.select().where(employees.c.id == result["owner_id"])
+        query = users.select().where(users.c.id == result["owner_id"])
         owner = await database.fetch_one(query=query)
         return {**result, "owner": owner}

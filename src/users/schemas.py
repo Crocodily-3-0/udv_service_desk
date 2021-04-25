@@ -10,7 +10,7 @@ class User(models.BaseUser):
     surname: str
     patronymic: Optional[str]
     is_owner: bool
-    client: int
+    client_id: int
     date_block: Optional[datetime]
 
 
@@ -19,7 +19,7 @@ class UserCreate(models.BaseUserCreate):
     surname: str
     patronymic: Optional[str]
     is_owner: bool = False
-    client: int
+    client_id: int
     date_reg: datetime  # TODO попробовать удалить данное поле из регистрации. Пока без нее не работет
     date_block: Optional[datetime]
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel
-from ..users.schemas import Employee
+from ..users.schemas import User
 
 
 class ClientBase(BaseModel):
@@ -17,7 +17,7 @@ class Client(ClientBase):
     id: int
     is_active: bool
     date_create: datetime
-    owner: Employee
+    owner: User
 
 
 class ClientShort(ClientBase):
