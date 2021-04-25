@@ -1,3 +1,4 @@
+from .schemas import AppealCreate, CommentCreate, AppealUpdate
 from ..db.db import database
 from .models import appeals, comments
 from ..reference_book.models import softwares, modules
@@ -34,3 +35,39 @@ async def get_comment(id: int, pk: int):
     if result:
         return dict(result)
     return None
+
+
+async def add_appeal(appeal: AppealCreate):
+    query = appeals.insert().values(**appeal.dict())
+    id = await database.execute(query)
+    return await get_appeal(id)
+
+
+async def add_comment(appeal_id: int, comment: CommentCreate):
+    query = comments.insert().values({**comment.dict(), "appeal_id": appeal_id})
+    comment_id = await database.execute(query)
+    return {**comment.dict(), "appeal_id": appeal_id, "id": comment_id}
+
+
+async def update_appeal(id: int, appeal: AppealUpdate):
+    query = appeals.update().where(appeals.c.id == id).values(**appeal.dict())
+    id_result = await database.execute(query)
+    return await get_appeal(id_result)
+
+
+async def update_comment(id: int, comment: CommentCreate):
+    query = comments.update().where(comments.c.id == id).values(**comment.dict())
+    result = await database.execute(query)
+    return result
+
+
+async def delete_appeal(id: int):
+    query = appeals.delete().where(appeals.c.id == id)
+    result = await database.execute(query)
+    return result
+
+
+async def delete_comment(id: int):
+    query = comments.delete().where(comments.c.id == id)
+    result = await database.execute(query)
+    return result

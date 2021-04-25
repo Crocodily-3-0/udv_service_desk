@@ -13,17 +13,27 @@ class AppealBase(BaseModel):
 
 class AppealCreate(AppealBase):
     author_id: str
-    responsible_id: str
+    responsible_id: Optional[str]
     software_id: int
     module_id: int
 
 
+class AppealUpdate(AppealCreate):
+    date_processing: Optional[datetime] = None
+
+
+class AppealDB(AppealCreate):  # TODO проверить нужен ли вообще
+    id: int
+    date_create: datetime
+    date_processing: Optional[datetime]
+
+
 class AppealShort(AppealBase):
     id: int
-    author: int  # TODO change to Member
+    author_id: str  # TODO change to Member
     date_create: datetime
     date_processing: Optional[datetime] = None
-    responsible: int  # TODO change to Developer
+    responsible_id: str  # TODO change to Developer
     software: SoftwareShort
     module: ModuleShort
 
@@ -33,7 +43,6 @@ class CommentBase(BaseModel):
 
 
 class CommentCreate(CommentBase):
-    appeal_id: int
     author_id: int
 
 
@@ -42,6 +51,13 @@ class Comment(CommentBase):
     date_create: datetime
     appeal: AppealShort
     author: int  # TODO maybe change to member (Union[member, developer])
+
+
+class CommentDB(CommentBase):
+    id: int
+    date_create: datetime
+    appeal_id: int
+    author_id: int
 
 
 class CommentShort(CommentBase):
