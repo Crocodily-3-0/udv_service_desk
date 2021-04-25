@@ -79,7 +79,8 @@ async def get_licence(id: int):
 
 async def update_module(id: int, module: ModuleCreate):
     query = modules.update().where(modules.c.id == id).values(**module.dict())
-    return await database.execute(query)
+    id_result = await database.execute(query)
+    return id_result
 
 
 async def update_licence(id: int, licence: LicenceCreate):
@@ -94,7 +95,8 @@ async def update_software(id: int, software: SoftwareCreate):
 
 async def delete_module(id: int):
     query = modules.delete().where(modules.c.id == id)
-    return await database.execute(query)
+    result = await database.execute(query)
+    return result
 
 
 async def delete_licence(id: int):

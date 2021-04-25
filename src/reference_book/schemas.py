@@ -41,6 +41,12 @@ class LicenceShort(LicenceBase):
         orm_mode = True
 
 
+class LicenceDB(LicenceBase):
+    id: int
+    client_id: int
+    software_id: int
+
+
 class Licence(LicenceBase):
     id: int
     client_id: ClientShort
@@ -55,6 +61,11 @@ class ModuleBase(BaseModel):
 
 
 class ModuleCreate(ModuleBase):
+    software_id: int
+
+
+class ModuleDB(ModuleBase):
+    id: int
     software_id: int
 
 
