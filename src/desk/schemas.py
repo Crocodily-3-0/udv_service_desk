@@ -1,41 +1,42 @@
-from typing import List, Optional
+from typing import Optional, List
 from datetime import datetime
 from .models import StatusTasks
 from pydantic import BaseModel
-from ..reference_book.schemas import SoftwareShort, ModuleShort
+
+from ..client_account.schemas import ClientDB
+from ..reference_book.schemas import SoftwareDB, ModuleShort
+from ..users.schemas import UserDB
 
 
 class AppealBase(BaseModel):
     topic: str
     text: str
-    status: StatusTasks
 
 
 class AppealCreate(AppealBase):
-    author_id: str
-    responsible_id: Optional[str]
     software_id: int
     module_id: int
 
 
 class AppealUpdate(AppealCreate):
-    date_processing: Optional[datetime] = None
-
-
-class AppealDB(AppealCreate):  # TODO проверить нужен ли вообще
-    id: int
-    date_create: datetime
-    date_processing: Optional[datetime]
+    pass
 
 
 class AppealShort(AppealBase):
     id: int
-    author_id: str  # TODO change to Member
+    status: StatusTasks
+
+
+class AppealDB(AppealCreate):
+    id: int
+    client_id: int
+    author_id: str
+    status: StatusTasks
     date_create: datetime
-    date_processing: Optional[datetime] = None
-    responsible_id: str  # TODO change to Developer
-    software: SoftwareShort
-    module: ModuleShort
+    date_processing: Optional[datetime]
+    responsible_id: Optional[int]
+    software_id: int
+    module_id: int
 
 
 class CommentBase(BaseModel):
@@ -43,35 +44,41 @@ class CommentBase(BaseModel):
 
 
 class CommentCreate(CommentBase):
-    author_id: int
+    pass
+
+
+class CommentUpdate(CommentCreate):
+    pass
 
 
 class Comment(CommentBase):
     id: int
+    appeal_id: int
+    author: UserDB
     date_create: datetime
-    appeal: AppealShort
-    author: int  # TODO maybe change to member (Union[member, developer])
 
 
 class CommentDB(CommentBase):
     id: int
-    date_create: datetime
     appeal_id: int
-    author_id: int
+    author_id: str
+    date_create: datetime
 
 
 class CommentShort(CommentBase):
     id: int
+    author_id: str
     date_create: datetime
-    author: int  # TODO maybe change to member (Union[member, developer])
 
 
 class Appeal(AppealBase):
     id: int
-    author: int  # TODO change to Member
+    status: StatusTasks
     date_create: datetime
     date_processing: Optional[datetime] = None
-    responsible: int  # TODO change to Developer
-    software: SoftwareShort
+    client: ClientDB
+    author: UserDB
+    responsible: Optional[UserDB]
+    software: SoftwareDB
     module: ModuleShort
-    # comments: List[CommentShort] = None
+    comment: Optional[List[CommentShort]]
