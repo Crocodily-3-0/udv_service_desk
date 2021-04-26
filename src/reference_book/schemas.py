@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel
 
-from src.client_account.schemas import ClientShort
+# from src.client_account.schemas import ClientDB
 
 
 class SoftwareBase(BaseModel):
@@ -14,7 +14,7 @@ class SoftwareCreate(SoftwareBase):
     pass
 
 
-class SoftwareShort(SoftwareBase):
+class SoftwareDB(SoftwareBase):
     id: int
 
     class Config:
@@ -49,8 +49,8 @@ class LicenceDB(LicenceBase):
 
 class Licence(LicenceBase):
     id: int
-    client_id: ClientShort
-    software: SoftwareShort
+    client_id: int
+    software: SoftwareDB
 
     class Config:
         orm_mode = True
@@ -71,7 +71,7 @@ class ModuleDB(ModuleBase):
 
 class Module(ModuleBase):
     id: int
-    software: SoftwareShort
+    software: SoftwareDB
 
     class Config:
         orm_mode = True

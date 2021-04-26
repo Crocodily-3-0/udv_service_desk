@@ -71,9 +71,9 @@ async def get_licence(id: int):
     result = await database.fetch_one(query=licences.select().where(licences.c.id == id))
     if result is not None:
         licence = dict(result)
-        client = await get_client(licence["client_id"])
+        # client = await get_client(licence["client_id"])
         software = await get_software(licence["software_id"])
-        return {**licence, "client": client, "software": software}
+        return {**licence, "software": software}
     return None
 
 
