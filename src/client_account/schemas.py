@@ -1,15 +1,23 @@
 from datetime import datetime
+from typing import Optional, List
 
 from pydantic import BaseModel
-from ..users.schemas import User
+
+from ..reference_book.schemas import LicenceDB
+from ..users.schemas import UserDB
 
 
 class ClientBase(BaseModel):
     name: str
-    date_block: datetime
 
 
 class ClientCreate(ClientBase):
+    is_active: bool = True  # TODO убрать, когда починю default
+    owner_id: str
+
+
+class ClientUpdate(BaseModel):
+    # avatar
     pass
 
 
@@ -17,10 +25,15 @@ class Client(ClientBase):
     id: int
     is_active: bool
     date_create: datetime
-    owner: User
+    date_block: Optional[datetime]
+    owner: UserDB
+    employees: List[UserDB]
+    licences: List[LicenceDB]
 
 
-class ClientShort(ClientBase):
+class ClientDB(ClientBase):
     id: int
-    owner_id: str
+    is_active: bool
     date_create: datetime
+    date_block: Optional[datetime]
+    owner_id: str
