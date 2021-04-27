@@ -1,32 +1,46 @@
 from typing import List
 
-from fastapi import APIRouter, status
-from ..schemas import Licence, LicenceShort, LicenceCreate, LicenceDB
-from ..services import get_licence, get_licences, add_licence, delete_licence, update_licence
+from fastapi import APIRouter, Depends, status, Response
+from ..schemas import Licence, LicenceCreate, LicenceDB
+from ..services import get_licence, get_licences, \
+    get_client_licences, get_client_licence, add_client_licence, update_client_licence, delete_client_licence
+from ...users.models import UserTable
+from ...users.logic import developer_user
 
 router = APIRouter()
+for_client_router = APIRouter()
 
 
-@router.get("/", response_model=List[LicenceShort], status_code=status.HTTP_200_OK)
-async def licence_list():
+@router.get("/", response_model=List[LicenceDB], status_code=status.HTTP_200_OK)
+async def licence_list(user: UserTable = Depends(developer_user)):
     return await get_licences()
 
 
 @router.get('/{id}', response_model=Licence, status_code=status.HTTP_200_OK)
-async def licence(id: int):
+async def licence(id: int, user: UserTable = Depends(developer_user)):
     return await get_licence(id)
 
 
-@router.post("/", response_model=LicenceDB, status_code=status.HTTP_201_CREATED)
-async def create_licence(licence: LicenceCreate):
-    return await add_licence(licence)
+@for_client_router.get("/{id}/licences", response_model=List[LicenceDB], status_code=status.HTTP_200_OK)
+async def client_licence_list(id: int, user: UserTable = Depends(developer_user)):
+    return await get_client_licences(id)
 
 
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_licence_by_id(id: int):
-    return await delete_licence(id)
+@for_client_router.get('/{id}/licences/{pk}', response_model=Licence, status_code=status.HTTP_200_OK)
+async def client_licence(id: int, pk: int, user: UserTable = Depends(developer_user)):
+    return await get_client_licence(id, pk)
 
 
-@router.put("/{id}", response_model=LicenceDB, status_code=status.HTTP_201_CREATED)
-async def update_licence_by_id(id: int, item: LicenceCreate):
-    return await update_licence(id, item)
+@for_client_router.post("/{id}/licences/", response_model=LicenceDB, status_code=status.HTTP_201_CREATED)
+async def create_client_licence(id: int, licence: LicenceCreate, user: UserTable = Depends(developer_user)):
+    return await add_client_licence(id, licence)
+
+
+@for_client_router.put("/{id}/licences/{pk}", response_model=LicenceDB, status_code=status.HTTP_201_CREATED)
+async def update_client_licence_by_id(id: int, pk: int, item: LicenceCreate, user: UserTable = Depends(developer_user)):
+    return await update_client_licence(id, pk, item)
+
+
+@for_client_router.delete("/{id}/licences/{pk}", response_class=Response, status_code=status.HTTP_204_NO_CONTENT)
+async def delete_client_licence_by_id(id: int, pk: int, user: UserTable = Depends(developer_user)):
+    await delete_client_licence(id, pk)

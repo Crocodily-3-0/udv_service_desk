@@ -28,17 +28,13 @@ class LicenceBase(BaseModel):
 
 
 class LicenceCreate(LicenceBase):
-    client_id: int
     software_id: int
 
 
-class LicenceShort(LicenceBase):
-    id: int
-    client_id: int  # TODO заменить на Client
-    software_id: int  # TODO заменить на str
-
-    class Config:
-        orm_mode = True
+# class LicenceShort(LicenceBase):
+#     id: int
+#     client_id: int
+#     software_id: int  # TODO заменить на str
 
 
 class LicenceDB(LicenceBase):
@@ -49,11 +45,8 @@ class LicenceDB(LicenceBase):
 
 class Licence(LicenceBase):
     id: int
-    client_id: int
+    client_id: int  # TODO заменить на Client
     software: SoftwareDB
-
-    class Config:
-        orm_mode = True
 
 
 class ModuleBase(BaseModel):
@@ -61,7 +54,7 @@ class ModuleBase(BaseModel):
 
 
 class ModuleCreate(ModuleBase):
-    software_id: int
+    pass
 
 
 class ModuleDB(ModuleBase):
@@ -73,20 +66,11 @@ class Module(ModuleBase):
     id: int
     software: SoftwareDB
 
-    class Config:
-        orm_mode = True
-
 
 class ModuleShort(ModuleBase):
     id: int
-
-    class Config:
-        orm_mode = True
 
 
 class Software(SoftwareBase):
     id: int
     modules: List[ModuleShort] = None
-
-    class Config:
-        orm_mode = True

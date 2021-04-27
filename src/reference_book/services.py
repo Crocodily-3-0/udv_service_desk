@@ -1,10 +1,7 @@
-from datetime import datetime
-
-from .schemas import ModuleCreate, LicenceCreate, LicenceShort, SoftwareCreate
+from .schemas import ModuleCreate, LicenceCreate, SoftwareCreate
 from ..client_account.services import get_client
 from ..db.db import database
 from .models import softwares, modules, licences
-from sqlalchemy.sql import select
 
 
 async def get_softwares():
@@ -19,33 +16,30 @@ async def get_software(id: int):
     return None
 
 
+async def get_software_with_modules(id: int):
+    result = await database.fetch_one(query=softwares.select().where(softwares.c.id == id))
+    if result is not None:
+        result = dict(result)
+        module = await get_software_modules(id)
+        return {**result, "modules": module}
+    return None
+
+
 async def add_software(software: SoftwareCreate):
     query = softwares.insert().values(**software.dict())
     id = await database.execute(query)
-    return {**software.dict(), "id": id}
+    return {"id": id, **software.dict()}
 
 
-async def add_licence(licence: LicenceCreate):
-    query = licences.insert().values(**licence.dict())
-    id = await database.execute(query)
-    return {**licence.dict(), "id": id}
+async def update_software(id: int, software: SoftwareCreate):
+    query = softwares.update().where(softwares.c.id == id).values(**software.dict())
+    await database.execute(query)
+    return {"id": id, **software.dict()}
 
 
-async def add_module(module: ModuleCreate):
-    query = modules.insert().values(**module.dict())
-    id = await database.execute(query)
-    return {**module.dict(), "id": id}
-
-
-async def get_software_with_modules(id: int):
-    result = await database.fetch_one(query=softwares.select().where(softwares.c.id == id))
-    query = select([modules.c.id, modules.c.name]).select_from(modules).where(modules.c.software_id == id)
-    module = await database.fetch_all(query)
-    if result is not None:
-        result = dict(result)
-        module = [dict(m) for m in module]
-        return {**result, "modules": module}
-    return None
+async def delete_software(id: int):
+    query = softwares.delete().where(softwares.c.id == id)
+    await database.execute(query)
 
 
 async def get_modules():
@@ -53,13 +47,40 @@ async def get_modules():
     return [dict(module) for module in result]
 
 
-async def get_module(id: int):
-    result = await database.fetch_one(query=modules.select().where(modules.c.id == id))
+async def get_software_modules(id: int):
+    result = await database.fetch_all(query=modules.select().where(modules.c.software_id == id))
+    return [dict(module) for module in result]
+
+
+async def get_module(id: int, pk: int):
+    query = modules.select().where((modules.c.software_id == id) & (modules.c.id == pk))
+    result = await database.fetch_one(query=query)
     if result is not None:
         module = dict(result)
-        software = await get_software(module["software_id"])
+        software = await get_software(id)
         return {**module, "software": software}
     return None
+
+
+async def get_module_db(id: int):
+    return dict(await database.fetch_one(modules.select().where(modules.c.id == id)))
+
+
+async def add_module(id: int, module: ModuleCreate):  # TODO посмотреть, что лучше работает, словарь или вызов бд
+    query = modules.insert().values({**module.dict(), "software_id": id})
+    module_id = await database.execute(query)
+    return {"id": module_id, **module.dict(), "software_id": id}
+
+
+async def update_module(id: int, pk: int, module: ModuleCreate):
+    query = modules.update().where((modules.c.software_id == id) & (modules.c.id == pk)).values(**module.dict())
+    await database.execute(query)
+    return {"id": pk, **module.dict(), "software_id": id}
+
+
+async def delete_module(id: int, pk: int):
+    query = modules.delete().where((modules.c.software_id == id) & (modules.c.id == pk))
+    await database.execute(query)
 
 
 async def get_licences():
@@ -77,33 +98,34 @@ async def get_licence(id: int):
     return None
 
 
-async def update_module(id: int, module: ModuleCreate):
-    query = modules.update().where(modules.c.id == id).values(**module.dict())
-    id_result = await database.execute(query)
-    return id_result
+async def get_client_licences(id: int):
+    result = await database.fetch_all(query=licences.select().where(licences.c.client_id == id))
+    return [dict(licence) for licence in result]
 
 
-async def update_licence(id: int, licence: LicenceCreate):
-    query = licences.update().where(licences.c.id == id).values(**licence.dict())
-    return await database.execute(query)
+async def get_client_licence(id: int, pk: int):
+    query = licences.select().where((licences.c.client_id == id) & (licences.c.id == pk))
+    result = await database.fetch_one(query=query)
+    if result is not None:
+        licence = dict(result)
+        software = await get_software(licence["software_id"])
+        return {**licence, "software": software}
+    return None
 
 
-async def update_software(id: int, software: SoftwareCreate):
-    query = softwares.update().where(softwares.c.id == id).values(**software.dict())
-    return await database.execute(query)
+async def add_client_licence(id: int, licence: LicenceCreate):
+    item = {**licence.dict(), "client_id": id}
+    query = licences.insert().values(item)
+    licence_id = await database.execute(query)
+    return {"id": licence_id, **licence.dict(), "client_id": id}
 
 
-async def delete_module(id: int):
-    query = modules.delete().where(modules.c.id == id)
-    result = await database.execute(query)
-    return result
+async def update_client_licence(id: int, pk: int, licence: LicenceCreate):
+    query = licences.update().where((licences.c.client_id == id) & (licences.c.id == pk)).values(**licence.dict())
+    await database.execute(query)
+    return {"id": pk, **licence.dict(), "client_id": id}
 
 
-async def delete_licence(id: int):
-    query = licences.delete().where(licences.c.id == id)
-    return await database.execute(query)
-
-
-async def delete_software(id: int):
-    query = softwares.delete().where(softwares.c.id == id)
-    return await database.execute(query)
+async def delete_client_licence(id: int, pk: int):
+    query = licences.delete().where((licences.c.client_id == id) & (licences.c.id == pk))
+    await database.execute(query)
