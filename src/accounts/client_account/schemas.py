@@ -2,9 +2,10 @@ from datetime import datetime
 from typing import Optional, List
 
 from pydantic import BaseModel
+from pydantic.types import UUID4
 
-from ..reference_book.schemas import LicenceDB
-from ..users.schemas import UserDB
+from ...reference_book.schemas import LicenceDB, SoftwareDB
+from ...users.schemas import UserDB
 
 
 class ClientBase(BaseModel):
@@ -12,11 +13,11 @@ class ClientBase(BaseModel):
 
 
 class ClientCreate(ClientBase):
-    is_active: bool = True  # TODO убрать, когда починю default
-    owner_id: str
+    pass
 
 
-class ClientUpdate(BaseModel):
+class ClientUpdate(ClientCreate):  # TODO доработать изменение заказчика
+    owner_id: Optional[UUID4]
     # avatar
     pass
 
@@ -29,6 +30,7 @@ class Client(ClientBase):
     owner: UserDB
     employees: List[UserDB]
     licences: List[LicenceDB]
+    software: List[SoftwareDB]
 
 
 class ClientDB(ClientBase):
@@ -36,4 +38,4 @@ class ClientDB(ClientBase):
     is_active: bool
     date_create: datetime
     date_block: Optional[datetime]
-    owner_id: str
+    owner_id: UUID4
