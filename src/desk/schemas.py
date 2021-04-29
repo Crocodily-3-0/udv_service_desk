@@ -3,7 +3,7 @@ from datetime import datetime
 from .models import StatusTasks
 from pydantic import BaseModel
 
-from ..client_account.schemas import ClientDB
+from ..accounts.client_account.schemas import ClientDB
 from ..reference_book.schemas import SoftwareDB, ModuleShort
 from ..users.schemas import UserDB
 

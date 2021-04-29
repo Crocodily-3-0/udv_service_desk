@@ -1,7 +1,7 @@
 from .schemas import ModuleCreate, LicenceCreate, SoftwareCreate
-from ..client_account.services import get_client
 from ..db.db import database
 from .models import softwares, modules, licences
+from ..accounts.client_account.services import activate_client
 
 
 async def get_softwares():
@@ -66,7 +66,7 @@ async def get_module_db(id: int):
     return dict(await database.fetch_one(modules.select().where(modules.c.id == id)))
 
 
-async def add_module(id: int, module: ModuleCreate):  # TODO посмотреть, что лучше работает, словарь или вызов бд
+async def add_module(id: int, module: ModuleCreate):
     query = modules.insert().values({**module.dict(), "software_id": id})
     module_id = await database.execute(query)
     return {"id": module_id, **module.dict(), "software_id": id}
@@ -92,7 +92,6 @@ async def get_licence(id: int):
     result = await database.fetch_one(query=licences.select().where(licences.c.id == id))
     if result is not None:
         licence = dict(result)
-        # client = await get_client(licence["client_id"])
         software = await get_software(licence["software_id"])
         return {**licence, "software": software}
     return None
@@ -117,6 +116,7 @@ async def add_client_licence(id: int, licence: LicenceCreate):
     item = {**licence.dict(), "client_id": id}
     query = licences.insert().values(item)
     licence_id = await database.execute(query)
+    await activate_client(id)
     return {"id": licence_id, **licence.dict(), "client_id": id}
 
 

@@ -1,5 +1,5 @@
 from .schemas import AppealCreate, CommentCreate, AppealUpdate, CommentUpdate
-from ..client_account.models import clients
+from ..accounts.client_account.models import clients
 from ..db.db import database
 from .models import appeals, comments
 from ..reference_book.models import softwares, modules
@@ -56,7 +56,7 @@ async def add_appeal(appeal: AppealCreate, user: UserTable):
 async def update_appeal(id: int, appeal: AppealUpdate, user: UserTable):
     query = appeals.update().\
         where((appeals.c.id == id) & (appeals.c.client_id == user.client_id)).\
-        values(**appeal.dict())
+        values(appeal.dict())
     result_id = await database.execute(query)
     return await get_appeal_db(result_id)
 

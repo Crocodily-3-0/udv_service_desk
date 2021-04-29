@@ -3,8 +3,6 @@ from typing import List
 
 from pydantic import BaseModel
 
-# from src.client_account.schemas import ClientDB
-
 
 class SoftwareBase(BaseModel):
     name: str = ''
@@ -45,7 +43,7 @@ class LicenceDB(LicenceBase):
 
 class Licence(LicenceBase):
     id: int
-    client_id: int  # TODO заменить на Client
+    client_id: int
     software: SoftwareDB
 
 
