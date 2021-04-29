@@ -12,7 +12,7 @@ class UserTable(Base, SQLAlchemyBaseUserTable):
     surname = Column(String, nullable=False)
     patronymic = Column(String, nullable=True)
     # avatar
-    is_owner = Column(Boolean, default=False, nullable=False)
+    is_owner = Column(Boolean, default=False, nullable=True)
     client_id = Column(Integer, ForeignKey('client.id'))  # TODO сделать проверку на существующего владельца клиента
     date_reg = Column(DateTime(timezone=True), server_default=sql.func.now())
     date_block = Column(DateTime, default=None, nullable=True)
