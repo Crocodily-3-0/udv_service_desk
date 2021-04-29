@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, status
 from fastapi_users.router import ErrorCode
 from pydantic.types import UUID4
 
@@ -8,11 +8,6 @@ from src.db.db import database
 from src.users.logic import all_users, delete_user, update_user
 from src.users.models import users
 from src.users.schemas import UserCreate, DeveloperCreate, UserUpdate
-
-
-async def get_developers():
-    developers_data = await database.fetch_all(users.select().where(users.c.is_superuser is True))
-    return [dict(developer) for developer in developers_data]
 
 
 async def get_developer(id: UUID4):

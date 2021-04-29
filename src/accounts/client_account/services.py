@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import HTTPException, status, Request
+from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
 from fastapi_users.router import ErrorCode
 from pydantic.types import UUID4
@@ -12,14 +12,9 @@ from .models import clients
 from ...errors import Errors
 from ...reference_book.models import licences, softwares
 from ...users.logic import all_users, get_or_404
-from ...users.models import users, user_db
+from ...users.models import users
 from ...users.schemas import UserCreate, OwnerCreate, UserUpdate
-
-
-async def check_and_convert_to_dict(result):
-    if result:
-        return dict(result)
-    return []
+from ...service import check_dict
 
 
 async def get_clients():
@@ -33,7 +28,7 @@ async def get_client(id: int):
     if result:
         result = dict(result)
         owner_data = await database.fetch_one(query=users.select().where(users.c.id == result["owner_id"]))
-        owner = await check_and_convert_to_dict(owner_data)
+        owner = await check_dict(owner_data)
         employee_data = await database.fetch_all(query=users.select().where(users.c.client_id == id))
         employees = [dict(employee) for employee in employee_data]
         licence_data = await database.fetch_all(query=licences.select().where(licences.c.client_id == id))

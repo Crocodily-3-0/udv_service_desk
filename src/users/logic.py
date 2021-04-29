@@ -74,6 +74,14 @@ async def after_verification(user: UserDB, request: Request):
     print(f"{user.id} is now verified.")
 
 
+async def get_developers():
+    query = users.select().where(users.c.is_superuser is True)
+    result = await database.fetch_all(query=query)
+    if result:
+        return [dict(developer) for developer in result]
+    return []
+
+
 async def get_or_404(id: UUID4) -> UserDB:
     user = await database.fetch_one(query=users.select().where(users.c.id == id))
     if user is None:

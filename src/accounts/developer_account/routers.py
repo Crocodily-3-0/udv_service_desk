@@ -3,9 +3,9 @@ from typing import List
 from fastapi import APIRouter, Depends, status, Response
 from pydantic.types import UUID4
 
-from .services import get_developers, get_developer, add_developer, update_developer, delete_developer
+from .services import get_developer, add_developer, update_developer, delete_developer
 from src.users.models import UserTable
-from src.users.logic import developer_user
+from src.users.logic import developer_user, get_developers
 from src.users.schemas import UserDB, UserCreate, UserUpdate
 
 developer_router = APIRouter()

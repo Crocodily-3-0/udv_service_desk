@@ -1,5 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
+
 from .models import StatusTasks
 from pydantic import BaseModel
 
@@ -18,8 +19,13 @@ class AppealCreate(AppealBase):
     module_id: int
 
 
-class AppealUpdate(AppealCreate):
-    pass
+class AppealUpdate(AppealBase):
+    topic: Optional[str]
+    text: Optional[str]
+    status: Optional[StatusTasks]
+    software_id: Optional[int]
+    module_id: Optional[int]
+    responsible_id: Optional[str]
 
 
 class AppealShort(AppealBase):
@@ -27,14 +33,14 @@ class AppealShort(AppealBase):
     status: StatusTasks
 
 
-class AppealDB(AppealCreate):
+class AppealDB(AppealBase):
     id: int
     client_id: int
     author_id: str
     status: StatusTasks
     date_create: datetime
     date_processing: Optional[datetime]
-    responsible_id: Optional[int]
+    responsible_id: Optional[str]
     software_id: int
     module_id: int
 
@@ -73,12 +79,17 @@ class CommentShort(CommentBase):
 
 class Appeal(AppealBase):
     id: int
-    status: StatusTasks
-    date_create: datetime
-    date_processing: Optional[datetime] = None
     client: ClientDB
     author: UserDB
     responsible: Optional[UserDB]
+    status: StatusTasks
+    date_create: datetime
+    date_processing: Optional[datetime]
     software: SoftwareDB
     module: ModuleShort
     comment: Optional[List[CommentShort]]
+
+
+class DevAppeal(Appeal):
+    developers: List[UserDB]
+    allowed_statuses: List[StatusTasks]
