@@ -26,6 +26,7 @@ class LicenceBase(BaseModel):
 
 
 class LicenceCreate(LicenceBase):
+    client_id: int
     software_id: int
 
 

@@ -112,6 +112,25 @@ async def get_client_licence(id: int, pk: int):
     return None
 
 
+async def add_licence(licence: LicenceCreate):
+    item = {**licence.dict()}
+    query = licences.insert().values(item)
+    licence_id = await database.execute(query)
+    await activate_client(item["client_id"])
+    return {"id": licence_id, **licence.dict()}
+
+
+async def update_licence(pk: int, licence: LicenceCreate):
+    query = licences.update().where(licences.c.id == pk).values(**licence.dict())
+    await database.execute(query)
+    return {"id": pk, **licence.dict()}
+
+
+async def delete_licence(pk: int):
+    query = licences.delete().where(licences.c.id == pk)
+    await database.execute(query)
+
+
 async def add_client_licence(id: int, licence: LicenceCreate):
     item = {**licence.dict(), "client_id": id}
     query = licences.insert().values(item)
