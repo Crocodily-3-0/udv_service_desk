@@ -1,11 +1,10 @@
 from datetime import datetime
 
 from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
 from fastapi_users.router import ErrorCode
 from pydantic.types import UUID4
 
-from .schemas import ClientCreate, ClientUpdate
+from .schemas import ClientCreate, ClientUpdate, ClientAndOwnerCreate
 from ..employee_account.services import update_employee
 from ...db.db import database
 from .models import clients
@@ -48,10 +47,13 @@ async def get_client_db(client_id):
     return dict(await database.fetch_one(query=query))
 
 
-async def add_client(client: ClientCreate):
+async def add_client(data: ClientAndOwnerCreate):
+    client = ClientCreate(**data.dict())
     query = clients.insert().values({**client.dict(), "is_active": False, "owner_id": "undefined"})
     client_id = await database.execute(query)
-    return RedirectResponse(f"http://0.0.0.0:8000/clients/{client_id}/owner")
+    owner = OwnerCreate(**data.dict())
+    await add_owner(client_id, owner)
+    return get_client_db(client_id)
 
 
 async def update_client(id: int, client: ClientUpdate):  # TODO проверить работу обновления
@@ -85,15 +87,16 @@ async def update_owner(client_id: int, new_owner_id: UUID4):
     if client:
         client = dict(client)
         if client["owner_id"] == "undefined":
-            client["owner_id"] = new_owner_id
+            new_client = ClientUpdate(**client, owner_id=new_owner_id)
+            await update_client(client_id, new_client)
             new_owner = get_or_404(new_owner_id)
         else:
             update_old = UserUpdate(is_owner=False)
             update_new = UserUpdate(is_owner=True)
             new_client = ClientUpdate(**client, owner_id=new_owner_id)
-            await update_employee(client["owner_id"], update_old)
+            old_owner = await update_employee(client["owner_id"], update_old)
             new_owner = await update_employee(new_owner_id, update_new)
-            await update_client(client_id, new_client)
+            client = await update_client(client_id, new_client)
         return new_owner
 
 
@@ -110,5 +113,4 @@ async def add_owner(client_id: int, user: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
         )
-    await update_owner(client_id, created_owner.id)
-    return RedirectResponse(f"http://0.0.0.0:8000/clients/{client_id}")
+    return await update_owner(client_id, created_owner.id)

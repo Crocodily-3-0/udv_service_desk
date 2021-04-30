@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, validator
 from pydantic.types import UUID4
 
 from ...reference_book.schemas import LicenceDB, SoftwareDB
@@ -14,6 +14,23 @@ class ClientBase(BaseModel):
 
 class ClientCreate(ClientBase):
     pass
+
+
+class ClientAndOwnerCreate(ClientCreate):
+    owner_name: str
+    surname: str
+    patronymic: Optional[str]
+    email: EmailStr
+    password: str
+    is_active: Optional[bool] = True
+    is_superuser: Optional[bool] = False
+    is_verified: Optional[bool] = False
+
+    @validator('password')
+    def valid_password(cls, v: str):
+        if len(v) < 6:
+            raise ValueError('Password should be at least 6 characters')
+        return v
 
 
 class ClientUpdate(ClientCreate):  # TODO доработать изменение заказчика
