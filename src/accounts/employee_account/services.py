@@ -17,7 +17,7 @@ async def get_employees(id: int):
     return result
 
 
-async def get_employee(id: int, pk: str):
+async def get_employee(id: int, pk: UUID4):
     employee = await database.fetch_one(users.select().where((users.c.client_id == id) & (users.c.id == pk)))
     if employee:
         employee = dict(employee)

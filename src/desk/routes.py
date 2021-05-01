@@ -34,6 +34,7 @@ async def appeal(id: int, user: UserTable = Depends(employee)):
 
 @router.post("/", response_model=AppealDB, status_code=status.HTTP_201_CREATED)
 async def create_appeal(item: AppealCreate, user: UserTable = Depends(employee)):
+    # TODO сделать проверку на не разработчика
     return await add_appeal(item, user)
 
 

@@ -18,10 +18,10 @@ class UserCreate(models.BaseUserCreate):
     name: str
     surname: str
     patronymic: Optional[str]
-    # is_owner: bool = False
-    # client_id: int
-    # date_reg: datetime  # TODO попробовать удалить данное поле из регистрации. Пока без нее не работет
-    # date_block: Optional[datetime]
+    is_owner: Optional[bool] = False
+    client_id: Optional[int]
+    date_reg: datetime = datetime.utcnow()
+    date_block: Optional[datetime]
 
     @validator('password')
     def valid_password(cls, v: str):
@@ -58,8 +58,8 @@ class UserUpdate(User, models.BaseUserUpdate):
 
 
 class UserDB(User, models.BaseUserDB):
-    is_active: bool
+    is_active: bool = True
     is_owner: Optional[bool]
     client_id: Optional[int]
-    date_reg: datetime
+    date_reg: datetime = datetime.utcnow()
     date_block: Optional[datetime]

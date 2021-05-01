@@ -20,7 +20,7 @@ async def employees_list(id: int, user: UserTable = Depends(any_user)):
 
 
 @employee_router.get("/{id}/employees/{pk}", response_model=UserDB, status_code=status.HTTP_200_OK)
-async def employee(id: int, pk: str, user: UserTable = Depends(any_user)):
+async def employee(id: int, pk: UUID4, user: UserTable = Depends(any_user)):
     user = await get_client_users_with_superuser(id, user)
     return await get_employee(id, pk)
 

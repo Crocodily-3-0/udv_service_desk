@@ -85,7 +85,7 @@ async def update_appeal(id: int, appeal: AppealUpdate, user: UserTable):
         old_appeal[field] = appeal[field]
     query = appeals.update().where(appeals.c.id == id).values(old_appeal)
     result_id = await database.execute(query)
-    return await get_appeal_db(result_id)
+    return await get_appeal_db(id)
 
 
 async def delete_appeal(id: int):

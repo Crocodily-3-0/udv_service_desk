@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, status, Request
-from .schemas import ClientDB, Client, ClientCreate, ClientUpdate
+from .schemas import ClientDB, Client, ClientCreate, ClientUpdate, ClientAndOwnerCreate
 from .services import get_clients, get_client, add_client, update_client, add_owner, get_client_owner, update_owner
 from src.users.models import UserTable
 from src.users.logic import developer_user, any_user, get_client_users_with_superuser, get_owner_with_superuser
@@ -18,8 +18,9 @@ async def clients_list(user: UserTable = Depends(developer_user)):
 
 
 @client_router.post("/", response_model=ClientDB, status_code=status.HTTP_201_CREATED)
-async def create_client(item: ClientCreate, user: UserTable = Depends(developer_user)):
-    return await add_client(item)
+async def create_client(item: ClientAndOwnerCreate, user: UserTable = Depends(developer_user)):
+    new_client = await add_client(item)
+    return new_client
 
 
 @client_router.get("/{id}", response_model=Client, status_code=status.HTTP_200_OK)
@@ -28,10 +29,10 @@ async def client(id: int, user: UserTable = Depends(any_user)):
     return await get_client(id)
 
 
-@client_router.put("/{id}", response_model=ClientDB, status_code=status.HTTP_201_CREATED)
+@client_router.patch("/{id}", response_model=ClientDB, status_code=status.HTTP_201_CREATED)
 async def update_client_by_id(id: int, item: ClientUpdate, user: UserTable = Depends(any_user)):
     # TODO разделить изменение аватарки владельцем и изменение владельца владельцем или разработчиком
-    user = get_owner_with_superuser(id, user)
+    user = await get_owner_with_superuser(id, user)
     return await update_client(id, item)
 
 
@@ -48,7 +49,7 @@ async def create_owner(id: int, item: UserCreate, user: UserTable = Depends(deve
 
 @client_router.patch("/{id}/owner", status_code=status.HTTP_201_CREATED)
 async def change_owner(id: int, item: ClientUpdate, user: UserTable = Depends(developer_user)):
-    user = get_owner_with_superuser(id, user)
+    user = await get_owner_with_superuser(id, user)
     return await update_owner(id, item.owner_id)
 
 

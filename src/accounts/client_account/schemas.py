@@ -13,7 +13,8 @@ class ClientBase(BaseModel):
 
 
 class ClientCreate(ClientBase):
-    pass
+    name: Optional[str]
+    owner_id: Optional[str]
 
 
 class ClientAndOwnerCreate(ClientCreate):
@@ -33,8 +34,8 @@ class ClientAndOwnerCreate(ClientCreate):
         return v
 
 
-class ClientUpdate(ClientCreate):  # TODO доработать изменение заказчика
-    owner_id: Optional[UUID4]
+class ClientUpdate(ClientBase):  # TODO доработать изменение заказчика
+    name: Optional[str]
     # avatar
     pass
 
@@ -55,4 +56,4 @@ class ClientDB(ClientBase):
     is_active: bool
     date_create: datetime
     date_block: Optional[datetime]
-    owner_id: UUID4
+    owner_id: str

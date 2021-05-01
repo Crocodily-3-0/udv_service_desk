@@ -1,3 +1,4 @@
+from fastapi_users.db.sqlalchemy import GUID
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, sql
 
 from ...db.db import Base
