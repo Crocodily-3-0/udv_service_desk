@@ -19,11 +19,9 @@ async def get_developer(id: UUID4):
 
 
 async def add_developer(user: UserCreate):
-    developer = DeveloperCreate(
-        **user.dict(),
-        date_reg=datetime.utcnow())
+    developer = DeveloperCreate(**user.dict())
     try:
-        created_developer = await all_users.create_user(developer, safe=True)
+        created_developer = await all_users.create_user(developer, safe=False)
     except Exception:
         print(Exception)
         raise HTTPException(

@@ -22,7 +22,7 @@ async def developer(id: UUID4, user: UserTable = Depends(developer_user)):
 
 
 @developer_router.post("/")
-async def create_developer(item: UserCreate, user: UserTable = Depends(developer_user)):
+async def create_developer(item: UserCreate):
     return await add_developer(item)
 
 
