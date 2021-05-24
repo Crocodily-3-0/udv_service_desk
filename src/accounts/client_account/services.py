@@ -15,7 +15,7 @@ from ...reference_book.models import licences, softwares
 from ...users.logic import all_users, get_or_404
 from ...users.models import users
 from ...users.schemas import UserCreate, OwnerCreate, UserUpdate
-from ...service import check_dict
+from ...service import check_dict, send_mail
 
 
 async def get_clients():
@@ -130,5 +130,8 @@ async def add_owner(client_id: int, owner: OwnerCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
         )
+
+    message = f"Добро пожаловать в UDV Service Desk!\n\nВаш логин в системе: {owner.email}\nВаш пароль: {owner.password}"
+    await send_mail(owner.email, "Вы зарегистрированы в системе", message)
     updated_owner = await update_owner(client_id, created_owner.id)
     return updated_owner

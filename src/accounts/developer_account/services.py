@@ -5,6 +5,7 @@ from fastapi_users.router import ErrorCode
 from pydantic.types import UUID4
 
 from src.db.db import database
+from src.service import send_mail
 from src.users.logic import all_users, delete_user, update_user
 from src.users.models import users
 from src.users.schemas import UserCreate, DeveloperCreate, UserUpdate
@@ -28,7 +29,8 @@ async def add_developer(user: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
         )
-
+    message = f"Добро пожаловать в UDV Service Desk!\n\nВаш логин в системе: {user.email}\nВаш пароль: {user.password}"
+    await send_mail(user.email, "Вы зарегистрированы в системе", message)
     return created_developer
 
 

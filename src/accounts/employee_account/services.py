@@ -6,6 +6,7 @@ from pydantic.types import UUID4
 
 from src.db.db import database
 from src.reference_book.models import licences
+from src.service import send_mail
 from src.users.logic import all_users, update_user, delete_user
 from src.users.models import users
 from src.users.schemas import UserCreate, EmployeeCreate, UserUpdate
@@ -39,11 +40,9 @@ async def count_allowed_employees(client_id: int):
 
 
 async def add_employee(id: int, user: UserCreate):
-    employee = EmployeeCreate(
-        **user.dict(),
-        client_id=id,
-        is_owner=False,
-        date_reg=datetime.utcnow())
+    user.client_id = id
+    user.is_owner = False
+    employee = EmployeeCreate(**user.dict())
     try:
         created_user = await all_users.create_user(employee, safe=True)
     except Exception:
@@ -51,7 +50,8 @@ async def add_employee(id: int, user: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
         )
-
+    message = f"Добро пожаловать в UDV Service Desk!\n\nВаш логин в системе: {user.email}\nВаш пароль: {user.password}"
+    await send_mail(user.email, "Вы зарегистрированы в системе", message)
     return created_user
 
 
