@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr, validator
 from pydantic.types import UUID4
 
 from ...reference_book.schemas import LicenceDB, SoftwareDB
-from ...users.schemas import UserDB
+from ...users.schemas import UserDB, generate_pwd
 
 
 class ClientBase(BaseModel):
@@ -22,7 +22,7 @@ class ClientAndOwnerCreate(ClientCreate):
     surname: str
     patronymic: Optional[str]
     email: EmailStr
-    password: str
+    password: str = generate_pwd()
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False

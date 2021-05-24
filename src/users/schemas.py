@@ -1,8 +1,18 @@
 from datetime import datetime
+import random
 
 from fastapi_users import models
 from pydantic import validator
 from typing import Optional
+
+
+def generate_pwd():
+    symbols_list = "+-/*!&$#?=@<>abcdefghijklnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+    password = ""
+    length = random.randint(6, 10)
+    for i in range(length):
+        password += random.choice(symbols_list)
+    return password
 
 
 class User(models.BaseUser):
@@ -18,6 +28,7 @@ class UserCreate(models.BaseUserCreate):
     name: str
     surname: str
     patronymic: Optional[str]
+    password: str = generate_pwd()
     is_owner: Optional[bool] = False
     client_id: Optional[int]
     date_reg: datetime = datetime.utcnow()
@@ -34,19 +45,19 @@ class EmployeeCreate(UserCreate, models.BaseUserCreate):
     # avatar
     is_owner: bool = False
     client_id: int
-    date_reg: datetime
+    date_reg: datetime = datetime.utcnow()
 
 
 class DeveloperCreate(UserCreate, models.BaseUserCreate):
     # avatar
-    date_reg: datetime
+    date_reg: datetime = datetime.utcnow()
 
 
 class OwnerCreate(UserCreate, models.BaseUserCreate):
     # avatar
     is_owner: bool = True
     client_id: int
-    date_reg: datetime
+    date_reg: datetime = datetime.utcnow()
 
 
 class UserUpdate(User, models.BaseUserUpdate):
