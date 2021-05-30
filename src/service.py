@@ -24,8 +24,4 @@ async def send_mail(to_addr: str, subject: str, msg: str):
     smtp_obj.login(MAIL_LOGIN, MAIL_PWD)
     smtp_obj.send_message(multipart_msg)
     smtp_obj.quit()
-    print("письмо отправлено")
-
-if __name__ == '__main__':
-    print("Hello")
-    asyncio.run(send_mail("puzanovim@yandex.ru", "HELLO", "Hello Hello"))
+    print(f"письмо отправлено {to_addr}")
