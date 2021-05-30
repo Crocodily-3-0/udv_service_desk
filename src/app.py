@@ -6,6 +6,7 @@ from .db.base import Base
 from .accounts.api import accounts_router
 from .desk.routes import router as desk_router
 from .reference_book.api.routes import router as book_router
+from .users.logic import create_developer
 from .users.routes import router as users_routes
 
 Base.metadata.create_all(bind=engine)

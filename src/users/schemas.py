@@ -75,10 +75,10 @@ class UserUpdate(User, models.BaseUserUpdate):
 
 
 class UserDB(User, models.BaseUserDB):
-    is_active: bool  # TODO проверить зачем здесь был " = True"
+    is_active: bool = True  # TODO проверить зачем здесь был " = True"
     is_owner: Optional[bool]
     client_id: Optional[int]
-    date_reg: datetime  # TODO проверить можно ли убрать " = datetime.utcnow()"
+    date_reg: datetime = datetime.utcnow()  # TODO проверить можно ли убрать " = datetime.utcnow()"
     date_block: Optional[datetime]
 
 

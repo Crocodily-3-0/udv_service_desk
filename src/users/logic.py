@@ -1,10 +1,13 @@
+from datetime import datetime
+
 from fastapi import HTTPException, Depends, status, Request
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import JWTAuthentication
 from fastapi_users.password import get_password_hash
+from fastapi_users.router import ErrorCode
 
 from ..config import SECRET
-from .schemas import User, UserCreate, UserUpdate, UserDB, DeveloperList, generate_pwd, EmployeeUpdate
+from .schemas import User, UserCreate, UserUpdate, UserDB, DeveloperList, generate_pwd, EmployeeUpdate, DeveloperCreate
 from .models import user_db, UserTable, users
 from src.db.db import database
 from src.errors import Errors
@@ -135,6 +138,32 @@ async def delete_user(id: UUID4):
     user = await get_or_404(id)
     await user_db.delete(user)
     return None
+
+
+async def create_developer():
+    developer = DeveloperCreate(
+        email="admin@py.com",
+        password="123456",
+        is_active=True,
+        is_superuser=True,
+        is_verified=False,
+        name="admin",
+        surname="string",
+        patronymic="string",
+        avatar="string",
+        is_owner=False,
+        client_id=0,
+        date_reg=datetime.utcnow(),
+    )
+    try:
+        created_developer = await all_users.create_user(developer, safe=False)
+    except Exception:
+        print(Exception)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
+        )
+    return created_developer
 
 
 async def get_user_by_email(email: EmailStr) -> UserDB:

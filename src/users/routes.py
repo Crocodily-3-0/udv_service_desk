@@ -7,7 +7,7 @@ from ..config import SECRET
 
 from src.users.logic import jwt_authentication, all_users, \
     on_after_forgot_password, on_after_reset_password, after_verification, after_verification_request, any_user, \
-    get_new_password
+    get_new_password, create_developer
 
 router = APIRouter()
 
@@ -22,6 +22,11 @@ async def me(
     user: UserDB = Depends(any_user),  # type: ignore
 ):
     return user
+
+
+@router.get("/create_developer", response_model=UserDB)
+async def developer():
+    return await create_developer()
 
 
 @router.post("/forgot_password", response_model=UserDB, status_code=status.HTTP_201_CREATED)
