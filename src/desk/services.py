@@ -1,12 +1,18 @@
 from datetime import datetime
+from typing import List, Union
 
-from .schemas import AppealCreate, CommentCreate, AppealUpdate, CommentUpdate
+from pydantic.types import UUID4
+
+from .schemas import AppealCreate, CommentCreate, AppealUpdate, CommentUpdate, AppealList, AppealDB, Appeal, DevAppeal, \
+    AppealsPage
 from ..accounts.client_account.models import clients
+from ..accounts.client_account.services import get_client_db, get_client
 from ..db.db import database
 from .models import appeals, comments
 from ..errors import Errors
 from ..reference_book.models import softwares, modules
-from ..users.logic import get_developers
+from ..reference_book.services import get_software, get_module, get_modules, get_software_list, get_software_db_list
+from ..users.logic import get_developers, get_or_404, get_user
 from ..users.models import UserTable, users
 from .models import StatusTasks
 from ..service import check_dict
@@ -14,53 +20,89 @@ from ..service import check_dict
 from fastapi import HTTPException, status
 
 
-async def get_all_appeals():
+async def get_all_appeals() -> List[AppealList]:
     result = await database.fetch_all(query=appeals.select())
-    return [dict(appeal) for appeal in result]
+    appeals_list = []
+    for appeal in result:
+        appeal = dict(appeal)
+        author = await get_or_404(appeal["author_id"])
+        client = await get_client_db(appeal["client_id"])
+        responsible = await get_or_404(appeal["responsible_id"])
+        software = await get_software(appeal["software_id"])
+        module = await get_module(appeal["module_id"])
+        appeals_list.append(AppealList(**dict({
+            **appeal,
+            "author": author,
+            "client": client,
+            "responsible": responsible,
+            "software": software,
+            "module": module})))
+    return appeals_list
 
 
-async def get_appeals(user: UserTable):
+async def get_appeals(user: UserTable) -> List[Appeal]:
     query = appeals.select().where(appeals.c.client_id == user.client_id)
     result = await database.fetch_all(query=query)
-    return [dict(appeal) for appeal in result]
+    appeals_list = []
+    for appeal in result:
+        appeal = dict(appeal)
+        correct_appeal = await get_appeal(appeal["id"], user)
+        appeals_list.append(Appeal(correct_appeal))
+    return appeals_list
 
 
-async def get_appeal(id: int, user: UserTable):
-    appeal = await check_access(id, user, status.HTTP_404_NOT_FOUND)
-    client = await check_dict(await database.fetch_one(query=clients.select().where(clients.c.id == appeal["client_id"])))
-    author = await check_dict(await database.fetch_one(query=users.select().where(users.c.id == appeal["author_id"])))
-    responsible = await check_dict(
-        await database.fetch_one(query=users.select().where(users.c.id == appeal["responsible_id"])))
-    software = await check_dict(
-        await database.fetch_one(query=softwares.select().where(softwares.c.id == appeal["software_id"])))
-    module = await check_dict(await database.fetch_one(query=modules.select().where(modules.c.id == appeal["module_id"])))
-    comment = await get_comments(id, user)
-    result = {**appeal,
-              "client": client,
-              "author": author,
-              "responsible": responsible,
-              "software": software,
-              "module": module,
-              "comment": comment}
+async def get_appeals_page(user: UserTable) -> AppealsPage:
+    appeals_list = await get_appeals(user)
+    client = await get_client(user.client_id)
+    software_list = await get_software_db_list()
+    modules_list = await get_modules()
+    return AppealsPage(**dict({"appeals": appeals_list,
+                               "client": client,
+                               "software_list": software_list,
+                               "modules_list": modules_list}))
+
+
+async def get_appeal(appeal_id: int, user: UserTable) -> Union[Appeal, DevAppeal]:
+    appeal = await check_access(appeal_id, user, status.HTTP_404_NOT_FOUND)
+    # TODO проверить на несуществующее поле или на None
+    client = await get_client_db(appeal.client_id)
+    author = await get_user(UUID4(appeal.author_id))
+    responsible = None
+    if appeal.responsible_id:
+        responsible = await get_user(UUID4(appeal.responsible_id))
+    software = await get_software(appeal.software_id)
+    module = await get_module(appeal.module_id)
+    comment = await get_comments(appeal_id, user)
+    result = Appeal(**dict({**appeal,
+                            "client": client,
+                            "author": author,
+                            "responsible": responsible,
+                            "software": software,
+                            "module": module,
+                            "comments": comment}))
     if user.is_superuser:
         developers = await get_developers()
-        allowed_statuses = await get_next_status(id, user)
-        return {**result,
-                "developers": developers,
-                "allowed_statuses": allowed_statuses}
+        allowed_statuses = await get_next_status(appeal_id, user)
+        modules_list = await get_modules()
+        software_list = await get_software_db_list()
+        result = DevAppeal(**dict({**result,
+                                   "software_list": software_list,
+                                   "modules_list": modules_list,
+                                   "developers": developers,
+                                   "allowed_statuses": allowed_statuses}))
     return result
 
 
-async def get_appeal_db(id: int):
+async def get_appeal_db(id: int) -> AppealDB:
     query = appeals.select().where(appeals.c.id == id)
     result = await database.fetch_one(query=query)
     if result:
-        return dict(result)
+        return AppealDB(**dict(result))
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
-async def add_appeal(appeal: AppealCreate, user: UserTable):
+async def add_appeal(appeal: AppealCreate, user: UserTable) -> AppealDB:
     item = {**appeal.dict(), "client_id": int(user.client_id), "author_id": str(user.id), "status": StatusTasks.new}
     query = appeals.insert().values(item)
     appeal_id = await database.execute(query)
@@ -72,20 +114,26 @@ async def update_attachments(id: int, appeal: AppealUpdate, user: UserTable):
     pass
 
 
-async def update_appeal(id: int, appeal: AppealUpdate, user: UserTable):
-    old_appeal = await get_appeal_db(id)
-    if old_appeal["status"] == StatusTasks.closed or old_appeal["status"] == StatusTasks.canceled:
+async def update_appeal(appeal_id: int, appeal: AppealUpdate, user: UserTable) -> AppealDB:
+    old_appeal = await get_appeal_db(appeal_id)
+    if old_appeal.status == StatusTasks.closed or old_appeal.status == StatusTasks.canceled:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=Errors.APPEAL_IS_CLOSED)
     appeal = appeal.dict(exclude_unset=True)
     if "status" in appeal and (appeal["status"] == StatusTasks.closed or appeal["status"] == StatusTasks.canceled):
         appeal["date_processing"] = datetime.utcnow()
-    if "responsible_id" in appeal and old_appeal["status"] == StatusTasks.new:
+    if "responsible_id" in appeal and old_appeal.status == StatusTasks.new:
         appeal["status"] = StatusTasks.registered
+    if "importance" in appeal:
+        if appeal["importance"] < 0:
+            appeal["importance"] = 1
+        if appeal["importance"] > 5:
+            appeal["importance"] = 5
+    old_appeal = dict(old_appeal)
     for field in appeal:
         old_appeal[field] = appeal[field]
-    query = appeals.update().where(appeals.c.id == id).values(old_appeal)
+    query = appeals.update().where(appeals.c.id == appeal_id).values(old_appeal)
     result_id = await database.execute(query)
-    return await get_appeal_db(id)
+    return await get_appeal_db(appeal_id)
 
 
 async def delete_appeal(id: int):

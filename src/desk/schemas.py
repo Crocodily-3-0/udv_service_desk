@@ -4,45 +4,9 @@ from datetime import datetime
 from .models import StatusTasks
 from pydantic import BaseModel
 
-from ..accounts.client_account.schemas import ClientDB
-from ..reference_book.schemas import SoftwareDB, ModuleShort
+from ..accounts.client_account.schemas import ClientDB, Client
+from ..reference_book.schemas import SoftwareDB, ModuleDB
 from ..users.schemas import UserDB
-
-
-class AppealBase(BaseModel):
-    topic: str
-    text: str
-
-
-class AppealCreate(AppealBase):
-    software_id: int
-    module_id: int
-
-
-class AppealUpdate(AppealBase):
-    topic: Optional[str]
-    text: Optional[str]
-    status: Optional[StatusTasks]
-    software_id: Optional[int]
-    module_id: Optional[int]
-    responsible_id: Optional[str]
-
-
-class AppealShort(AppealBase):
-    id: int
-    status: StatusTasks
-
-
-class AppealDB(AppealBase):
-    id: int
-    client_id: int
-    author_id: str
-    status: StatusTasks
-    date_create: datetime
-    date_processing: Optional[datetime]
-    responsible_id: Optional[str]
-    software_id: int
-    module_id: int
 
 
 class CommentBase(BaseModel):
@@ -77,19 +41,86 @@ class CommentShort(CommentBase):
     date_create: datetime
 
 
-class Appeal(AppealBase):
+class AppealBase(BaseModel):
+    topic: str
+    importance: int
+    date_edit: Optional[datetime]
+
+
+class AppealCreate(AppealBase):
+    text: str
+    software_id: int
+    module_id: int
+    date_create: datetime = datetime.utcnow()
+    importance: Optional[int] = 1
+
+
+class AppealUpdate(AppealBase):
+    topic: Optional[str]
+    text: Optional[str]
+    status: Optional[StatusTasks]
+    software_id: Optional[int]
+    module_id: Optional[int]
+    responsible_id: Optional[str]
+    importance: Optional[int]
+    date_edit: datetime = datetime.utcnow()
+
+
+class AppealShort(AppealBase):
     id: int
-    client: ClientDB
-    author: UserDB
-    responsible: Optional[UserDB]
+    text: str
+    status: StatusTasks
+
+
+class AppealDB(AppealBase):
+    id: int
+    text: str
+    client_id: int
+    author_id: str
     status: StatusTasks
     date_create: datetime
     date_processing: Optional[datetime]
+    responsible_id: Optional[str]
+    software_id: int
+    module_id: int
+
+
+class AppealList(AppealBase):
+    id: int
+    importance: int
+    title: str
+    author: UserDB
+    client: ClientDB
+    date_create: datetime
+    responsible: UserDB
+    status: StatusTasks
     software: SoftwareDB
-    module: ModuleShort
-    comment: Optional[List[CommentShort]]
+    module: ModuleDB
+
+
+class Appeal(AppealBase):
+    id: int
+    text: str
+    status: StatusTasks
+    date_create: datetime
+    date_processing: Optional[datetime]
+    client: ClientDB
+    author: UserDB
+    responsible: Optional[UserDB]
+    software: SoftwareDB
+    module: ModuleDB
+    comments: Optional[List[CommentShort]]
+
+
+class AppealsPage(BaseModel):
+    appeals: List[AppealList]
+    client: Client
+    software_list: List[SoftwareDB]
+    modules_list: List[ModuleDB]
 
 
 class DevAppeal(Appeal):
+    software_list: List[SoftwareDB]
+    modules_list: List[ModuleDB]
     developers: List[UserDB]
     allowed_statuses: List[StatusTasks]

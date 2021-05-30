@@ -25,9 +25,11 @@ class Appeal(Base):
     responsible_id = Column(String, ForeignKey('user.id'), nullable=True)
     status = Column(Enum(StatusTasks), default=StatusTasks.new)
     date_create = Column(DateTime(timezone=True), server_default=sql.func.now())
+    date_edit = Column(DateTime, default=None)
     date_processing = Column(DateTime, default=None)
     software_id = Column(Integer, ForeignKey('software.id'), nullable=False)
     module_id = Column(Integer, ForeignKey('module.id'), nullable=False)
+    importance = Column(Integer, default=1)
     # attachments
 
 

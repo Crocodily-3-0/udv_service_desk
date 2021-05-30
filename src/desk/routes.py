@@ -1,10 +1,8 @@
-from fastapi import APIRouter, status, Depends, Response
-from typing import List
+from fastapi import APIRouter, status, Depends, Response, HTTPException
+from typing import List, Union
 
-from pydantic.types import UUID4
-
-from .services import get_all_appeals, get_appeals, get_appeal, get_comments, get_comment, \
-    add_appeal, add_comment, update_appeal, update_comment, delete_comment, update_attachments
+from .services import get_all_appeals, get_appeal, get_comments, get_comment, \
+    add_appeal, add_comment, update_appeal, update_comment, delete_comment, get_appeals_page
 from .schemas import Appeal, CommentShort, Comment, AppealCreate, CommentCreate, CommentDB, \
     AppealUpdate, AppealDB, AppealShort, CommentUpdate, DevAppeal
 from ..users.models import UserTable
@@ -17,36 +15,24 @@ router = APIRouter()
 async def appeals_list(user: UserTable = Depends(any_user)):
     if user.is_superuser:
         return await get_all_appeals()
-    return await get_appeals(user)
+    return await get_appeals_page(user)
 
 
-@router.get("/{id}", status_code=status.HTTP_200_OK)
-async def appeal(id: int, user: UserTable = Depends(employee)):
-    return await get_appeal(id, user)
-
-
-# @router.get("/{id}", response_model=DevAppeal, status_code=status.HTTP_200_OK)
-# async def appeal(id: int, user: UserTable = Depends(developer_user)):
-#     print("WINDOW OF DEVELOPER")
-#     print(user.is_superuser)
-#     return await get_appeal(id, user)
+@router.get("/{id}", response_model=Union[Appeal, DevAppeal], status_code=status.HTTP_200_OK)
+async def appeal(appeal_id: int, user: UserTable = Depends(any_user)):
+    return await get_appeal(appeal_id, user)
 
 
 @router.post("/", response_model=AppealDB, status_code=status.HTTP_201_CREATED)
 async def create_appeal(item: AppealCreate, user: UserTable = Depends(employee)):
-    # TODO сделать проверку на не разработчика
+    if user.is_superuser is True:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return await add_appeal(item, user)
 
 
-# @router.patch("/{id}", status_code=status.HTTP_201_CREATED)
-# async def update_attachments_on_appeal(id: int, item: AppealUpdate, user: UserTable = Depends(employee)):
-#     pass
-    # return await update_attachments(id, item, user)
-
-
-@router.patch("/{id}", response_model=AppealDB, status_code=status.HTTP_201_CREATED)
-async def update_appeal_by_id(id: int, item: AppealUpdate, user: UserTable = Depends(developer_user)):
-    return await update_appeal(id, item, user)
+@router.patch("/{id}", response_model=AppealDB, status_code=status.HTTP_201_CREATED)  # TODO сделать изменение обращения пользователем
+async def update_appeal_by_id(appeal_id: int, item: AppealUpdate, user: UserTable = Depends(developer_user)):
+    return await update_appeal(appeal_id, item, user)
 
 
 @router.get("/{id}/comments", response_model=List[CommentShort], status_code=status.HTTP_200_OK)
