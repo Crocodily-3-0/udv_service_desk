@@ -1,11 +1,13 @@
 from fastapi import Depends, Response
-from fastapi import APIRouter
+from fastapi import APIRouter, status
+from pydantic import EmailStr
 
 from .schemas import UserDB
 from ..config import SECRET
 
 from src.users.logic import jwt_authentication, all_users, \
-    on_after_forgot_password, on_after_reset_password, after_verification, after_verification_request, any_user
+    on_after_forgot_password, on_after_reset_password, after_verification, after_verification_request, any_user, \
+    get_new_password
 
 router = APIRouter()
 
@@ -20,6 +22,11 @@ async def me(
     user: UserDB = Depends(any_user),  # type: ignore
 ):
     return user
+
+
+@router.post("/forgot_password", response_model=UserDB, status_code=status.HTTP_201_CREATED)
+async def forgot_password(email: EmailStr):
+    return get_new_password(email)
 
 
 router.include_router(

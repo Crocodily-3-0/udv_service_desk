@@ -4,15 +4,17 @@ from fastapi_users.authentication import JWTAuthentication
 from fastapi_users.password import get_password_hash
 
 from ..config import SECRET
-from .schemas import User, UserCreate, UserUpdate, UserDB
+from .schemas import User, UserCreate, UserUpdate, UserDB, DeveloperList, generate_pwd, EmployeeUpdate
 from .models import user_db, UserTable, users
 from src.db.db import database
 from src.errors import Errors
 
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 from pydantic.types import UUID4
-# from requests import Request
-
+from pydantic import EmailStr
+from ..desk.models import appeals
+from ..reference_book.services import update_employee_licence
+from ..service import send_mail
 
 auth_backends = []
 
@@ -74,12 +76,21 @@ async def after_verification(user: UserDB, request: Request):
     print(f"{user.id} is now verified.")
 
 
-async def get_developers():
+async def get_count_dev_appeals(developer_id: UUID4):
+    query = appeals.select().where(appeals.c.responsible_id == developer_id)
+    result = await database.fetch_all(query=query)
+    return len(result)  # TODO проверить не будет ли ошибки на len(None)
+
+
+async def get_developers() -> List[DeveloperList]:
     query = users.select().where(users.c.is_superuser is True)
     result = await database.fetch_all(query=query)
-    if result:
-        return [dict(developer) for developer in result]
-    return []
+    developers = []
+    for developer in result:
+        developer = dict(developer)
+        count_appeals = await get_count_dev_appeals(developer["id"])
+        developers.append(DeveloperList(**dict({**developer, "count_appeals": count_appeals})))
+    return developers
 
 
 async def get_or_404(id: UUID4) -> UserDB:
@@ -91,7 +102,21 @@ async def get_or_404(id: UUID4) -> UserDB:
     return user
 
 
-async def update_user(id: UUID4, update_dict: Dict[str, Any]):
+async def get_user(id: UUID4) -> Optional[UserDB]:
+    user = await database.fetch_one(query=users.select().where(users.c.id == id))
+    return user
+
+
+async def pre_update_user(id: UUID4, item: EmployeeUpdate) -> UserDB:
+    if item.licence_id:
+        licence = await update_employee_licence(id, item.licence_id)
+    update_employee = UserUpdate(**dict(item))
+    update_dict = update_employee.dict(exclude_unset=True)
+    updated_developer = await update_user(id, update_dict)
+    return updated_developer
+
+
+async def update_user(id: UUID4, update_dict: Dict[str, Any]) -> UserDB:
     user = await get_or_404(id)
     user = {**user}
     for field in update_dict:
@@ -110,3 +135,30 @@ async def delete_user(id: UUID4):
     user = await get_or_404(id)
     await user_db.delete(user)
     return None
+
+
+async def get_user_by_email(email: EmailStr) -> UserDB:
+    user = await database.fetch_one(query=users.select().where(users.c.email == email))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Errors.USER_NOT_FOUND)
+    return user
+
+
+async def change_pwd(id: UUID4, pwd: str) -> UserDB:
+    if len(pwd) < 6:
+        raise ValueError('Password should be at least 6 characters')
+    updated_user = EmployeeUpdate(**dict({"password": pwd}))
+    return await pre_update_user(id, updated_user)
+
+
+async def get_new_password(email: EmailStr) -> UserDB:
+    user = await get_user_by_email(email)
+    pwd = await generate_pwd()
+
+    message = f"Добрый день!\nВаш новый пароль: {pwd}\n" \
+              f"Если Вы не меняли пароль обратитесь к администратору или смените его самостоятельно"
+    await send_mail(user.email, "Вы зарегистрированы в системе", message)
+
+    return await change_pwd(user.id, pwd)
