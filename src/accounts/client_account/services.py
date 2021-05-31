@@ -12,15 +12,15 @@ from .models import clients
 from ...desk.models import appeals
 from ...errors import Errors
 from ...reference_book.schemas import LicenceDB
-from ...reference_book.services import get_licences, add_client_licence, get_client_licences, get_software_db_list, \
-    add_employee_licence, get_employee_licence
+from ...reference_book.services import add_client_licence, get_client_licences, get_software_db_list, \
+    add_employee_licence, get_employee_licence, get_licences_db
 from ...users.logic import all_users, get_or_404, pre_update_user
 from ...users.models import users
-from ...users.schemas import UserCreate, OwnerCreate, UserUpdate, Employee, UserDB, EmployeeList
+from ...users.schemas import UserCreate, OwnerCreate, Employee, UserDB, EmployeeList, EmployeeUpdate
 from ...service import send_mail
 
 
-async def get_count_appeals(employee_id: UUID4) -> int:
+async def get_count_appeals(employee_id: str) -> int:
     query = appeals.select().where(appeals.c.author_id == employee_id)
     result = await database.fetch_all(query=query)
     return len([dict(appeal) for appeal in result])
@@ -31,8 +31,8 @@ async def get_employees(client_id: int) -> List[EmployeeList]:
     employees_list = []
     for employee in result:
         employee = dict(employee)
-        licence: LicenceDB = await get_employee_licence(UUID4(employee["id"]))
-        count_appeals: int = await get_count_appeals(UUID4(employee["id"]))
+        licence: LicenceDB = await get_employee_licence(str(employee["id"]))
+        count_appeals: int = await get_count_appeals(str(employee["id"]))
         employees_list.append(EmployeeList(**dict({**employee, "licence": licence, "count_appeals": count_appeals})))
     return employees_list
 
@@ -48,14 +48,15 @@ async def get_clients() -> List[ClientShort]:
     clients_list = []
     for client in result:
         client = dict(client)
+        owner = await get_client_owner(client["id"])
         count_employees = await get_count_employees(client["id"])
-        clients_list.append(ClientShort(**dict({**client, "count_employees": count_employees})))
+        clients_list.append(ClientShort(**dict({**client, "owner": owner, "count_employees": count_employees})))
     return clients_list
 
 
 async def get_clients_page() -> ClientsPage:
     clients_list = await get_clients()
-    licences_list = await get_licences()
+    licences_list = await get_licences_db()
     return ClientsPage(**dict({"clients_list": clients_list, "licences_list": licences_list}))
 
 
@@ -77,7 +78,7 @@ async def get_dev_client_page(client_id: int) -> DevClientPage:
     client = await get_client(client_id)
     employees_list = await get_employees(client_id)
     software_list = await get_software_db_list()
-    return DevClientPage(**dict({**client,
+    return DevClientPage(**dict({"client": client,
                                  "employees_list": employees_list,
                                  "software_list": software_list}))
 
@@ -105,7 +106,7 @@ async def get_client_db(client_id: int) -> Optional[ClientDB]:
 
 
 async def add_client(data: ClientAndOwnerCreate) -> Optional[ClientDB]:
-    client = ClientCreate(**data.dict())
+    client = ClientCreate(**dict(data))
     query = clients.insert().values({**client.dict(), "is_active": False, "owner_id": "undefined"})
     try:
         client_id = await database.execute(query)
@@ -127,41 +128,31 @@ async def add_client(data: ClientAndOwnerCreate) -> Optional[ClientDB]:
         date_reg=datetime.utcnow(),
     )
     owner = await add_owner(client_id, owner)
-    owner_licence = await add_employee_licence(owner.id, data.owner_licence)
+    owner_licence = await add_employee_licence(str(owner.id), data.owner_licence)
     new_client = await get_client_db(client_id)
     return new_client
 
 
-async def update_client(id: int, client: ClientUpdate) -> Optional[ClientDB]:  # TODO проверить работу обновления
-    client_dict = client.dict()
-    if "owner_id" in client_dict:
-        client_dict["owner_id"] = str(client_dict["owner_id"])
-    query = clients.update().where(clients.c.id == id).values(**client_dict)
-    client_id = await database.execute(query)
+async def update_client(client_id: int, client: ClientUpdate) -> Optional[ClientDB]:  # TODO проверить работу обновления
+    new_client_dict = dict(client)
+    old_client_dict = dict(await get_client_db(client_id))
+    for field in new_client_dict:
+        if new_client_dict[field]:
+            old_client_dict[field] = new_client_dict[field]
+    query = clients.update().where(clients.c.id == client_id).values(**old_client_dict)
+    updated_client = await database.execute(query)
     updated_client = await get_client_db(client_id)
     return updated_client
 
 
-async def activate_client(id: int) -> Optional[ClientDB]:
-    current_client = await database.fetch_one(query=clients.select().where(clients.c.id == id))
-    if current_client:
-        current_client = dict(current_client)
-        current_client["is_active"] = True
-        await database.execute(query=clients.update().where(clients.c.id == id).values(**current_client))
-    return current_client
-
-
-async def block_client(id: int) -> Optional[ClientDB]:
-    current_client = await database.fetch_one(query=clients.select().where(clients.c.id == id))
-    if current_client:
-        current_client = dict(current_client)
-        current_client["is_active"] = False
-        await database.execute(query=clients.update().where(clients.c.id == id).values(**current_client))
-    return current_client
+async def block_client(client_id: int) -> Optional[ClientDB]:
+    new_client = ClientUpdate(is_activa=False)
+    updated_client = await update_client(client_id, new_client)
+    return updated_client
 
 
 async def get_client_owner(client_id: int) -> Employee:
-    query = users.select().where((users.c.client_id == client_id) & (users.c.is_owner is True))
+    query = users.select().where((users.c.client_id == client_id) & (users.c.is_owner == 1))
     owner = await database.fetch_one(query=query)
     if owner is None:
         raise HTTPException(
@@ -169,21 +160,20 @@ async def get_client_owner(client_id: int) -> Employee:
             detail=Errors.USER_NOT_FOUND
         )
     owner = dict(owner)
-    licence: LicenceDB = await get_employee_licence(UUID4(owner["id"]))
+    licence: LicenceDB = await get_employee_licence(str(owner["id"]))
     return Employee(**dict({**owner, "licence": licence}))
 
 
 async def update_client_owner(client_id: int, new_owner_id: UUID4) -> Optional[UserDB]:
     client = await get_client_db(client_id)
     if client:
+        new_client = ClientUpdate(owner_id=str(new_owner_id))
         if client.owner_id == "undefined":
-            new_client = ClientUpdate(name=client.name, owner_id=str(new_owner_id))
-            await update_client(client_id, new_client)
+            client = await update_client(client_id, new_client)
             new_owner = await get_or_404(new_owner_id)
         else:
-            update_old = UserUpdate(is_owner=False)
-            update_new = UserUpdate(is_owner=True)
-            new_client = ClientUpdate(**dict(client), owner_id=new_owner_id)
+            update_old = EmployeeUpdate(is_owner=False)
+            update_new = EmployeeUpdate(is_owner=True)
             old_owner = await pre_update_user(UUID4(client.owner_id), update_old)
             new_owner = await pre_update_user(new_owner_id, update_new)
             client = await update_client(client_id, new_client)
@@ -201,7 +191,8 @@ async def add_owner(client_id: int, owner: OwnerCreate):
             detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
         )
 
-    message = f"Добро пожаловать в UDV Service Desk!\n\nВаш логин в системе: {owner.email}\nВаш пароль: {owner.password}"
+    message = f"Добро пожаловать в UDV Service Desk!\n\n" \
+              f"Ваш логин в системе: {owner.email}\nВаш пароль: {owner.password}"
     await send_mail(owner.email, "Вы зарегистрированы в системе", message)
     updated_owner = await update_client_owner(client_id, created_owner.id)
     return updated_owner

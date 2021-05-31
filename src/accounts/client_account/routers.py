@@ -21,8 +21,7 @@ async def clients_list(user: UserTable = Depends(developer_user)):
 
 @client_router.post("/", response_model=ClientDB, status_code=status.HTTP_201_CREATED)
 async def create_client(item: ClientAndOwnerCreate, user: UserTable = Depends(developer_user)):
-    new_client = await add_client(item)
-    return new_client
+    return await add_client(item)
 
 
 @client_router.get("/{id}", response_model=Union[ClientPage, DevClientPage], status_code=status.HTTP_200_OK)

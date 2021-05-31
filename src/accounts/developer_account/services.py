@@ -11,16 +11,16 @@ from src.users.models import users
 from src.users.schemas import UserCreate, DeveloperCreate, UserUpdate, UserDB
 
 
-async def get_developer(id: UUID4) -> Optional[UserDB]:
-    query = users.select().where((users.c.is_superuser is True) & (users.c.id == id))
+async def get_developer(developer_id: str) -> Optional[UserDB]:
+    query = users.select().where((users.c.is_superuser == 1) & (users.c.id == developer_id))
     developer = await database.fetch_one(query=query)
     if developer:
         return UserDB(**dict(developer))
     return None
 
 
-async def add_developer(user: UserCreate) -> UserDB:
-    developer = DeveloperCreate(**user.dict())
+async def add_developer(developer: DeveloperCreate) -> UserDB:
+    developer = DeveloperCreate(**dict({**dict(developer), "is_superuser": True}))
     try:
         created_developer = await all_users.create_user(developer, safe=False)
     except Exception:
@@ -29,8 +29,9 @@ async def add_developer(user: UserCreate) -> UserDB:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
         )
-    message = f"Добро пожаловать в UDV Service Desk!\n\nВаш логин в системе: {user.email}\nВаш пароль: {user.password}"
-    await send_mail(user.email, "Вы зарегистрированы в системе", message)
+    message = f"Добро пожаловать в UDV Service Desk!\n\nВаш логин в системе: " \
+              f"{developer.email}\nВаш пароль: {developer.password}"
+    await send_mail(developer.email, "Вы зарегистрированы в системе", message)
     return created_developer
 
 

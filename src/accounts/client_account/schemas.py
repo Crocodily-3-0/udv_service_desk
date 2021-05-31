@@ -9,13 +9,12 @@ from ...users.schemas import UserDB, generate_pwd, Employee, EmployeeList
 
 class ClientBase(BaseModel):
     name: str
-    avatar: Optional[str]
+    avatar: str
 
 
 class ClientCreate(ClientBase):
     name: Optional[str]
     owner_id: Optional[str]
-    avatar: Optional[str]
 
 
 class ClientAndOwnerCreate(ClientCreate):
@@ -42,11 +41,13 @@ class ClientAndOwnerCreate(ClientCreate):
 class ClientUpdate(ClientBase):  # TODO доработать изменение заказчика
     name: Optional[str]
     owner_id: Optional[str]
+    avatar: Optional[str]
 
 
 class ClientDB(ClientBase):
     id: int
     is_active: bool
+    avatar: str
     date_create: datetime
     date_block: Optional[datetime]
     owner_id: str
@@ -66,19 +67,19 @@ class Client(ClientBase):
     licences: List[Licence]
 
 
-class ClientPage(ClientBase):
+class ClientPage(BaseModel):
     client: Client
     employees_list: List[EmployeeList]
     licences_list: List[Licence]
 
 
-class DevClientPage(ClientBase):
+class DevClientPage(BaseModel):
     client: Client
     employees_list: List[Employee] = []
     software_list: List[SoftwareDB]
 
 
-class ClientsPage(ClientBase):
+class ClientsPage(BaseModel):
     clients_list: List[ClientShort]
     licences_list: List[LicenceDB]
 

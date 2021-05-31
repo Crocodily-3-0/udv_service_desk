@@ -56,6 +56,7 @@ class PreEmployeeCreate(EmployeeCreate, models.BaseUserCreate):
 
 
 class DeveloperCreate(UserCreate, models.BaseUserCreate):
+    is_superuser = True
     date_reg: datetime = datetime.utcnow()
 
 

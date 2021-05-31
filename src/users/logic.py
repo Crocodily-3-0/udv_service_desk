@@ -79,19 +79,20 @@ async def after_verification(user: UserDB, request: Request):
     print(f"{user.id} is now verified.")
 
 
-async def get_count_dev_appeals(developer_id: UUID4):
+async def get_count_dev_appeals(developer_id: str) -> int:
     query = appeals.select().where(appeals.c.responsible_id == developer_id)
     result = await database.fetch_all(query=query)
     return len(result)  # TODO проверить не будет ли ошибки на len(None)
 
 
 async def get_developers() -> List[DeveloperList]:
-    query = users.select().where(users.c.is_superuser is True)
+    query = users.select().where(users.c.is_superuser == 1)
     result = await database.fetch_all(query=query)
     developers = []
     for developer in result:
         developer = dict(developer)
-        count_appeals = await get_count_dev_appeals(developer["id"])
+        print(developer)
+        count_appeals = await get_count_dev_appeals(str(developer["id"]))
         developers.append(DeveloperList(**dict({**developer, "count_appeals": count_appeals})))
     return developers
 
@@ -115,18 +116,29 @@ async def pre_update_user(id: UUID4, item: EmployeeUpdate) -> UserDB:
         licence = await update_employee_licence(id, item.licence_id)
     update_employee = UserUpdate(**dict(item))
     update_dict = update_employee.dict(exclude_unset=True)
+    updated_user = await update_user(id, update_dict)
+    return updated_user
+
+
+async def pre_update_developer(id: UUID4, item: UserUpdate) -> UserDB:
+    update_dict = item.dict(exclude_unset=True)
+    if "email" in update_dict.keys():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=Errors.FORBIDDEN_CHANGE_EMAIL
+        )
     updated_developer = await update_user(id, update_dict)
     return updated_developer
 
 
 async def update_user(id: UUID4, update_dict: Dict[str, Any]) -> UserDB:
     user = await get_or_404(id)
-    user = {**user}
+    user = dict(user)
     for field in update_dict:
         if field == "password":
             hashed_password = get_password_hash(update_dict[field])
             user["hashed_password"] = hashed_password
-        else:
+        elif update_dict[field]:
             user[field] = update_dict[field]
 
     updated_user = await user_db.update(UserDB(**user))
@@ -179,7 +191,12 @@ async def change_pwd(id: UUID4, pwd: str) -> UserDB:
     if len(pwd) < 6:
         raise ValueError('Password should be at least 6 characters')
     updated_user = EmployeeUpdate(**dict({"password": pwd}))
-    return await pre_update_user(id, updated_user)
+    updated_user = await pre_update_user(id, updated_user)
+
+    message = f"Добрый день!\nВы изменили свой пароль на: {pwd}\n" \
+              f"Если Вы не меняли пароль обратитесь к администратору или смените его самостоятельно"
+    await send_mail(updated_user.email, "Вы зарегистрированы в системе", message)
+    return updated_user
 
 
 async def get_new_password(email: EmailStr) -> UserDB:
