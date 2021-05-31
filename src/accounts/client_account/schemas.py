@@ -85,7 +85,7 @@ class ClientsPage(BaseModel):
 
 
 class EmployeePage(BaseModel):
-    employees: Employee
+    employee: Employee
     client: Client
     licences: List[Licence]
 

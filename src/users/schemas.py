@@ -53,6 +53,7 @@ class EmployeeCreate(UserCreate, models.BaseUserCreate):
 
 class PreEmployeeCreate(EmployeeCreate, models.BaseUserCreate):
     licence_id: int
+    client_id: Optional[int]
 
 
 class DeveloperCreate(UserCreate, models.BaseUserCreate):
@@ -69,7 +70,7 @@ class OwnerCreate(UserCreate, models.BaseUserCreate):
 class UserUpdate(User, models.BaseUserUpdate):
     name: Optional[str]
     surname: Optional[str]
-    is_owner: Optional[bool]
+    is_owner: Optional[bool] = False
     is_active: Optional[bool]
     date_block: Optional[datetime]
     email: Optional[EmailStr]

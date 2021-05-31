@@ -34,10 +34,10 @@ async def developer():
 
 @router.post("/forgot_password", response_model=UserDB, status_code=status.HTTP_201_CREATED)
 async def forgot_password(email: EmailStr):
-    return get_new_password(email)
+    return await get_new_password(email)
 
 
-@router.post("/login")
+@router.post("/auth/jwt/login")
 async def login(
     response: Response, credentials: OAuth2PasswordRequestForm = Depends()
 ):
@@ -60,13 +60,13 @@ router.include_router(
     all_users.get_register_router(),
     prefix="/auth",
     tags=["auth"])
-router.include_router(
-    all_users.get_reset_password_router(
-        SECRET,
-        after_forgot_password=on_after_forgot_password,
-        after_reset_password=on_after_reset_password),
-    prefix="/auth",
-    tags=["auth"])
+# router.include_router(
+#     all_users.get_reset_password_router(
+#         SECRET,
+#         after_forgot_password=on_after_forgot_password,
+#         after_reset_password=on_after_reset_password),
+#     prefix="/auth",
+#     tags=["auth"])
 # router.include_router(
 #     all_users.get_users_router(),
 #     prefix="/users",

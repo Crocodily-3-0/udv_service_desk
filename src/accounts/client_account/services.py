@@ -14,7 +14,7 @@ from ...errors import Errors
 from ...reference_book.schemas import LicenceDB
 from ...reference_book.services import add_client_licence, get_client_licences, get_software_db_list, \
     add_employee_licence, get_employee_licence, get_licences_db
-from ...users.logic import all_users, get_or_404, pre_update_user
+from ...users.logic import all_users, get_or_404, pre_update_user, user_is_active
 from ...users.models import users
 from ...users.schemas import UserCreate, OwnerCreate, Employee, UserDB, EmployeeList, EmployeeUpdate
 from ...service import send_mail
@@ -69,7 +69,7 @@ async def get_client_page(client_id: int) -> ClientPage:
     client = await get_client(client_id)
     employees_list = await get_employees(client_id)
     licences_list = await get_client_licences(client_id)
-    return ClientPage(**dict({**client,
+    return ClientPage(**dict({"client": client,
                               "employees_list": employees_list,
                               "licences_list": licences_list}))
 
@@ -166,7 +166,7 @@ async def get_client_owner(client_id: int) -> Employee:
 
 async def update_client_owner(client_id: int, new_owner_id: UUID4) -> Optional[UserDB]:
     client = await get_client_db(client_id)
-    if client:
+    if client and await user_is_active(new_owner_id):
         new_client = ClientUpdate(owner_id=str(new_owner_id))
         if client.owner_id == "undefined":
             client = await update_client(client_id, new_client)

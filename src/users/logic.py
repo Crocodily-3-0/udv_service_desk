@@ -17,7 +17,7 @@ from pydantic.types import UUID4
 from pydantic import EmailStr
 from ..desk.models import appeals
 from ..reference_book.services import update_employee_licence
-from ..service import send_mail
+from ..service import send_mail, Email
 
 auth_backends = []
 
@@ -61,6 +61,13 @@ async def get_client_users_with_superuser(client_id: int, user: UserTable = Depe
     if not user.is_superuser and user.client_id != client_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return user
+
+
+async def user_is_active(user_id: UUID4) -> bool:
+    user = await get_or_404(user_id)
+    if user.is_active:
+        return True
+    return False
 
 
 async def on_after_forgot_password(user: UserDB, token: str, request: Request):
@@ -113,15 +120,16 @@ async def get_user(id: UUID4) -> Optional[UserDB]:
 
 async def pre_update_user(id: UUID4, item: EmployeeUpdate) -> UserDB:
     if item.licence_id:
-        licence = await update_employee_licence(id, item.licence_id)
+        licence = await update_employee_licence(str(id), item.licence_id)
     update_employee = UserUpdate(**dict(item))
-    update_dict = update_employee.dict(exclude_unset=True)
+    update_dict = update_employee.dict(exclude_unset=True,
+                                       exclude={"id", "email", "is_superuser", "is_verified"})
     updated_user = await update_user(id, update_dict)
     return updated_user
 
 
 async def pre_update_developer(id: UUID4, item: UserUpdate) -> UserDB:
-    update_dict = item.dict(exclude_unset=True)
+    update_dict = item.dict(exclude_unset=True, exclude={"id"})
     if "email" in update_dict.keys():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -135,12 +143,11 @@ async def update_user(id: UUID4, update_dict: Dict[str, Any]) -> UserDB:
     user = await get_or_404(id)
     user = dict(user)
     for field in update_dict:
-        if field == "password":
+        if field == "password" and update_dict[field]:
             hashed_password = get_password_hash(update_dict[field])
             user["hashed_password"] = hashed_password
-        elif update_dict[field]:
+        elif update_dict[field] is not None:
             user[field] = update_dict[field]
-
     updated_user = await user_db.update(UserDB(**user))
 
     return updated_user
@@ -201,10 +208,5 @@ async def change_pwd(id: UUID4, pwd: str) -> UserDB:
 
 async def get_new_password(email: EmailStr) -> UserDB:
     user = await get_user_by_email(email)
-    pwd = await generate_pwd()
-
-    message = f"Добрый день!\nВаш новый пароль: {pwd}\n" \
-              f"Если Вы не меняли пароль обратитесь к администратору или смените его самостоятельно"
-    await send_mail(user.email, "Вы зарегистрированы в системе", message)
-
+    pwd = generate_pwd()
     return await change_pwd(user.id, pwd)

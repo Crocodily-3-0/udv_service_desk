@@ -44,24 +44,22 @@ async def update_employee_by_id(id: int, pk: UUID4, item: EmployeeUpdate, user: 
     return await pre_update_user(pk, item)
 
 
-@employee_router.post("/{id}/employees/{pk}/make_owner", response_model=UserDB, status_code=status.HTTP_201_CREATED)
-async def block_employee_by_id(id: int, pk: UUID4, user: UserTable = Depends(any_user)):
-    # TODO отправляет post or patch?
+@employee_router.patch("/{id}/employees/{pk}/make_owner", response_model=UserDB, status_code=status.HTTP_201_CREATED)
+async def make_employee_owner(id: int, pk: UUID4, user: UserTable = Depends(any_user)):
     user = await get_owner(id, user)
     return await update_client_owner(id, pk)
 
 
-@employee_router.post("/{id}/employees/{pk}/block", response_model=UserDB, status_code=status.HTTP_201_CREATED)
+@employee_router.patch("/{id}/employees/{pk}/block", response_model=UserDB, status_code=status.HTTP_201_CREATED)
 async def block_employee_by_id(id: int, pk: UUID4, user: UserTable = Depends(any_user)):
-    # TODO отправляет post or patch?
     user = await get_owner(id, user)
     return await block_employee(pk)
 
 
-@employee_router.patch("/{id:uuid}/pwd", response_model=UserDB, status_code=status.HTTP_201_CREATED)
-async def change_employee_pwd(id: UUID4, new_pwd: str, user: UserTable = Depends(any_user)):
-    if user.id == id:
-        return await change_pwd(id, new_pwd)
+@employee_router.patch("/{id}/employees/{pk}/pwd", response_model=UserDB, status_code=status.HTTP_201_CREATED)
+async def change_employee_pwd(id: int, pk: UUID4, new_pwd: str, user: UserTable = Depends(any_user)):
+    if str(user.id) == str(pk):
+        return await change_pwd(pk, new_pwd)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 

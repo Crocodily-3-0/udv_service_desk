@@ -318,7 +318,7 @@ async def get_employee_licence(employee_id: str) -> Optional[LicenceDB]:
 
 
 async def add_employee_licence(employee_id: str, licence_id: int) -> EmployeeLicenceDB:
-    if await get_employee_licence(employee_id):
+    if await get_employee_licence(str(employee_id)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Errors.USER_HAS_ANOTHER_LICENCE,
@@ -333,13 +333,13 @@ async def add_employee_licence(employee_id: str, licence_id: int) -> EmployeeLic
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Errors.LICENCE_IS_FULL,
         )
-    employee_licence = EmployeeLicenceCreate(**dict({"employee_id": employee_id, "licence_id": licence_id}))
+    employee_licence = EmployeeLicenceCreate(**dict({"employee_id": str(employee_id), "licence_id": licence_id}))
     query = employee_licences.insert().values(**employee_licence.dict())
     employee_licence_id = await database.execute(query)
     return EmployeeLicenceDB(**dict({"id": employee_licence_id, **employee_licence.dict()}))
 
 
-async def update_employee_licence(employee_id: UUID4, licence_id: int) -> EmployeeLicenceDB:
+async def update_employee_licence(employee_id: str, licence_id: int) -> EmployeeLicenceDB:
     if await get_free_vacancy_in_licence(licence_id) <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -9,9 +9,9 @@ from src.accounts.client_account.services import get_client, get_employees
 from src.db.db import database
 from src.reference_book.services import get_client_licences, add_employee_licence
 from src.service import send_mail
-from src.users.logic import all_users, update_user, delete_user
+from src.users.logic import all_users, update_user, delete_user, get_or_404
 from src.users.models import users
-from src.users.schemas import EmployeeCreate, PreEmployeeCreate, UserDB
+from src.users.schemas import EmployeeCreate, PreEmployeeCreate, UserDB, UserUpdate
 
 
 async def get_employee(client_id: int, pk: UUID4) -> Optional[EmployeePage]:
@@ -20,7 +20,7 @@ async def get_employee(client_id: int, pk: UUID4) -> Optional[EmployeePage]:
         employee = dict(employee)
         client = await get_client(client_id)
         client_licences = client.licences
-        return EmployeePage(**dict({**employee, "client": client, "licences": client_licences}))
+        return EmployeePage(**dict({"employee": employee, "client": client, "licences": client_licences}))
     return None
 
 
@@ -37,6 +37,7 @@ async def add_employee(id: int, user: PreEmployeeCreate) -> UserDB:
     user.client_id = id
     user.is_owner = False
     employee = EmployeeCreate(**user.dict())
+    print(employee)
     try:
         created_user = await all_users.create_user(employee, safe=True)
     except Exception:
@@ -57,6 +58,9 @@ async def delete_employee(pk: UUID4):
 
 
 async def block_employee(pk: UUID4):
-    update_dict = {"is_active": False}
+    item = await get_or_404(pk)
+    update_employee = UserUpdate(**dict({**dict(item), "is_active": False}))
+    update_dict = update_employee.dict(exclude_unset=True,
+                                       exclude={"id", "email", "is_superuser", "is_verified"})
     updated_employee = await update_user(pk, update_dict)
     return updated_employee
