@@ -1,7 +1,10 @@
-from fastapi import Depends, Response
+from fastapi import Depends, Response, HTTPException
 from fastapi import APIRouter, status
+from fastapi_users.router import ErrorCode
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
 
+from .models import user_db
 from .schemas import UserDB
 from ..config import SECRET
 
@@ -34,10 +37,25 @@ async def forgot_password(email: EmailStr):
     return get_new_password(email)
 
 
-router.include_router(
-    all_users.get_auth_router(jwt_authentication),
-    prefix="/auth/jwt",
-    tags=["auth"])
+@router.post("/login")
+async def login(
+    response: Response, credentials: OAuth2PasswordRequestForm = Depends()
+):
+    user = await user_db.authenticate(credentials)
+
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ErrorCode.LOGIN_BAD_CREDENTIALS,
+        )
+    token = await jwt_authentication.get_login_response(user, response)
+    return {"token": token, "user": user}
+
+
+# router.include_router(
+#     all_users.get_auth_router(jwt_authentication),
+#     prefix="/auth/jwt",
+#     tags=["auth"])
 router.include_router(
     all_users.get_register_router(),
     prefix="/auth",
