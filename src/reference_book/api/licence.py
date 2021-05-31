@@ -11,7 +11,9 @@ router = APIRouter()
 
 @router.get("/", response_model=LicencePage, status_code=status.HTTP_200_OK)
 async def licence_list(user: UserTable = Depends(developer_user)):
-    return await get_licence_page()
+    if user.is_superuser:
+        return await get_licence_page()
+    return None
 
 
 @router.get('/{id}', response_model=Licence, status_code=status.HTTP_200_OK)

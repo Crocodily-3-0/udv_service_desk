@@ -18,14 +18,13 @@ class Module(Base):
 
     id = Column(Integer, primary_key=True, index=True, unique=True)
     name = Column(String, nullable=False)
-    software_id = Column(Integer, ForeignKey('software.id'), nullable=False)  # TODO сделать проверку на ключ > 0
 
 
 class Software(Base):
     __tablename__ = 'software'
 
     id = Column(Integer, primary_key=True, index=True, unique=True)
-    name = Column(String, unique=True, nullable=False)  # TODO сделать проверку на непустую строку
+    name = Column(String, unique=True, nullable=False)
 
 
 class EmployeeLicence(Base):
@@ -34,14 +33,13 @@ class EmployeeLicence(Base):
     id = Column(Integer, primary_key=True, index=True, unique=True)
     employee_id = Column(String, ForeignKey('user.id'), nullable=False, unique=True)
     licence_id = Column(Integer, ForeignKey('licence.id'), nullable=False)
-    UniqueConstraint(employee_id, licence_id)
 
 
 class ClientLicence(Base):
     __tablename__ = 'ClientLicence'
 
     id = Column(Integer, primary_key=True, index=True, unique=True)
-    client_id = Column(String, ForeignKey('client.id'), nullable=False, unique=True)
+    client_id = Column(String, ForeignKey('client.id'), nullable=False)
     licence_id = Column(Integer, ForeignKey('licence.id'), nullable=False)
     UniqueConstraint(client_id, licence_id)
 

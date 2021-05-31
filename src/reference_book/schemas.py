@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -42,12 +42,12 @@ class SoftwareDB(SoftwareBase):
 
 class Software(SoftwareBase):
     id: int
-    modules: List[ModuleDB] = None
+    modules: List[ModuleDB]
 
 
 class SoftwarePage(BaseModel):
     software_list: List[Software]
-    module_list: List[ModuleDB]
+    modules_list: List[ModuleDB]
 
 
 class LicenceBase(BaseModel):
