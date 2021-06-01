@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from ..accounts.client_account.schemas import ClientDB, Client
 from ..reference_book.schemas import SoftwareDB, ModuleDB
-from ..users.schemas import UserDB
+from ..users.schemas import UserDB, DeveloperList
 
 
 class CommentBase(BaseModel):
@@ -66,6 +66,7 @@ class AppealBase(BaseModel):
 
 class AppealCreate(AppealBase):
     text: str
+    importance: Optional[int]
     software_id: int
     module_id: int
     date_create: datetime = datetime.utcnow()
@@ -105,11 +106,10 @@ class AppealDB(AppealBase):
 class AppealList(AppealBase):
     id: int
     importance: int
-    title: str
     author: UserDB
     client: ClientDB
     date_create: datetime
-    responsible: UserDB
+    responsible: Optional[UserDB]
     status: StatusTasks
     software: SoftwareDB
     module: ModuleDB
@@ -139,5 +139,5 @@ class AppealsPage(BaseModel):
 class DevAppeal(Appeal):
     software_list: List[SoftwareDB]
     modules_list: List[ModuleDB]
-    developers: List[UserDB]
+    developers: List[DeveloperList]
     allowed_statuses: List[StatusTasks]

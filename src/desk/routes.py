@@ -1,28 +1,31 @@
 from fastapi import APIRouter, status, Depends, Response, HTTPException, UploadFile, File
-from typing import List, Union
+from typing import List, Union, Optional
 
 from .services import get_all_appeals, get_appeal, get_comments, get_comment, \
     add_appeal, add_comment, update_appeal, update_comment, delete_comment, get_appeals_page, upload_attachment, \
-    delete_attachment, get_attachment, update_dev_appeal, check_access
+    delete_attachment, get_attachment, update_dev_appeal, check_access, get_dev_appeal
 from .schemas import Appeal, CommentShort, Comment, AppealCreate, CommentCreate, CommentDB, \
-    AppealUpdate, AppealDB, AppealShort, CommentUpdate, DevAppeal, AttachmentDB
+    AppealUpdate, AppealDB, AppealShort, CommentUpdate, DevAppeal, AttachmentDB, AppealList, AppealsPage
 from ..users.models import UserTable
 from ..users.logic import employee, any_user
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[AppealShort], status_code=status.HTTP_200_OK)
+@router.get("/", status_code=status.HTTP_200_OK)
 async def appeals_list(user: UserTable = Depends(any_user)):
     if user.is_superuser:
         return await get_all_appeals()
     return await get_appeals_page(user)
 
 
-@router.get("/{id}", response_model=Union[Appeal, DevAppeal], status_code=status.HTTP_200_OK)
+@router.get("/{id}", status_code=status.HTTP_200_OK)
 async def appeal(id: int, user: UserTable = Depends(any_user)):
     await check_access(id, user, status.HTTP_403_FORBIDDEN)
-    return await get_appeal(id, user)
+    result = await get_appeal(id, user)
+    if user.is_superuser:
+        result = await get_dev_appeal(id, user, result)
+    return result
 
 
 @router.post("/", response_model=AppealDB, status_code=status.HTTP_201_CREATED)
@@ -33,10 +36,10 @@ async def create_appeal(item: AppealCreate, user: UserTable = Depends(employee))
 
 
 @router.patch("/{id}", response_model=AppealDB, status_code=status.HTTP_201_CREATED)
-async def update_appeal_by_id(appeal_id: int, item: AppealUpdate, user: UserTable = Depends(any_user)):
+async def update_appeal_by_id(id: int, item: AppealUpdate, user: UserTable = Depends(any_user)):
     if user.is_superuser:
-        return await update_dev_appeal(appeal_id, item, user)
-    return await update_appeal(appeal_id, item, user)
+        return await update_dev_appeal(id, item, user)
+    return await update_appeal(id, item, user)
 
 
 @router.get("/{id}/comments", response_model=List[CommentShort], status_code=status.HTTP_200_OK)

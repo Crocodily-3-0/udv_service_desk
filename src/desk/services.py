@@ -1,6 +1,6 @@
 import shutil
 from datetime import datetime
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 
 from pydantic.types import UUID4
 
@@ -27,30 +27,33 @@ async def get_all_appeals() -> List[AppealList]:
     appeals_list = []
     for appeal in result:
         appeal = dict(appeal)
-        author = await get_or_404(appeal["author_id"])
-        client = await get_client_db(appeal["client_id"])
-        responsible = await get_or_404(appeal["responsible_id"])
-        software = await get_software(appeal["software_id"])
-        module = await get_module(appeal["module_id"])
-        appeals_list.append(AppealList(**dict({
-            **appeal,
-            "author": author,
-            "client": client,
-            "responsible": responsible,
-            "software": software,
-            "module": module})))
+        appeals_list.append(await get_appeal_list(appeal))
     return appeals_list
 
 
-async def get_appeals(user: UserTable) -> List[Appeal]:
+async def get_appeals(user: UserTable) -> List[AppealList]:
     query = appeals.select().where(appeals.c.client_id == user.client_id)
     result = await database.fetch_all(query=query)
     appeals_list = []
     for appeal in result:
         appeal = dict(appeal)
-        correct_appeal = await get_appeal(appeal["id"], user)
-        appeals_list.append(Appeal(**dict(correct_appeal)))
+        appeals_list.append(await get_appeal_list(appeal))
     return appeals_list
+
+
+async def get_appeal_list(appeal: Dict) -> AppealList:
+    author = await get_or_404(appeal["author_id"])
+    client = await get_client_db(appeal["client_id"])
+    responsible = await get_user(appeal["responsible_id"])
+    software = await get_software(appeal["software_id"])
+    module = await get_module(appeal["module_id"])
+    return AppealList(**dict({
+        **appeal,
+        "author": author,
+        "client": client,
+        "responsible": responsible,
+        "software": software,
+        "module": module}))
 
 
 async def get_appeals_page(user: UserTable) -> AppealsPage:
@@ -64,9 +67,8 @@ async def get_appeals_page(user: UserTable) -> AppealsPage:
                                "modules_list": modules_list}))
 
 
-async def get_appeal(appeal_id: int, user: UserTable) -> Union[Appeal, DevAppeal]:
+async def get_appeal(appeal_id: int, user: UserTable) -> Appeal:
     appeal = await check_access(appeal_id, user, status.HTTP_404_NOT_FOUND)
-    # TODO проверить на несуществующее поле или на None
     client = await get_client_db(appeal.client_id)
     author = await get_user(UUID4(appeal.author_id))
     responsible = None
@@ -75,23 +77,26 @@ async def get_appeal(appeal_id: int, user: UserTable) -> Union[Appeal, DevAppeal
     software = await get_software(appeal.software_id)
     module = await get_module(appeal.module_id)
     comment = await get_comments(appeal_id, user)
-    result = Appeal(**dict({**appeal,
+    result = Appeal(**dict({**dict(appeal),
                             "client": client,
                             "author": author,
                             "responsible": responsible,
                             "software": software,
                             "module": module,
                             "comments": comment}))
-    if user.is_superuser:
-        developers = await get_developers()
-        allowed_statuses = await get_next_status(appeal_id, user)
-        modules_list = await get_modules()
-        software_list = await get_software_db_list()
-        result = DevAppeal(**dict({**result,
-                                   "software_list": software_list,
-                                   "modules_list": modules_list,
-                                   "developers": developers,
-                                   "allowed_statuses": allowed_statuses}))
+    return result
+
+
+async def get_dev_appeal(appeal_id: int, user: UserTable, appeal: Appeal) -> DevAppeal:
+    developers = await get_developers()
+    allowed_statuses = await get_next_status(appeal_id, user)
+    modules_list = await get_modules()
+    software_list = await get_software_db_list()
+    result = DevAppeal(**dict({**dict(appeal),
+                               "software_list": software_list,
+                               "modules_list": modules_list,
+                               "developers": developers,
+                               "allowed_statuses": allowed_statuses}))
     return result
 
 
@@ -105,6 +110,11 @@ async def get_appeal_db(appeal_id: int) -> AppealDB:
 
 
 async def add_appeal(appeal: AppealCreate, user: UserTable) -> AppealDB:
+    if appeal.importance:
+        if appeal.importance > 5:
+            appeal.importance = 5
+        elif appeal.importance < 1:
+            appeal.importance = 1
     item = {**appeal.dict(), "client_id": int(user.client_id), "author_id": str(user.id), "status": StatusTasks.new}
     query = appeals.insert().values(item)
     appeal_id = await database.execute(query)
@@ -114,19 +124,30 @@ async def add_appeal(appeal: AppealCreate, user: UserTable) -> AppealDB:
 
 async def update_appeal(appeal_id: int, appeal: AppealUpdate, user: UserTable) -> AppealDB:
     old_appeal = await check_access(appeal_id, user, status.HTTP_403_FORBIDDEN)
-    if old_appeal.status == StatusTasks.closed or old_appeal.status == StatusTasks.canceled:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=Errors.APPEAL_IS_CLOSED)
     appeal = appeal.dict(exclude_unset=True)
+
+    if old_appeal.status == StatusTasks.closed or old_appeal.status == StatusTasks.canceled:
+        if "status" not in appeal.keys() or appeal["status"] != StatusTasks.reopen:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=Errors.APPEAL_IS_CLOSED)
+
     if "importance" in appeal:
-        if appeal["importance"] < 0:
+        if appeal["importance"] < 1:
             appeal["importance"] = 1
         if appeal["importance"] > 5:
             appeal["importance"] = 5
-    old_appeal = dict(old_appeal)
+    old_appeal_dict = dict(old_appeal)
     for field in appeal:
-        if appeal[field] is not None:
-            old_appeal[field] = appeal[field]
-    query = appeals.update().where(appeals.c.id == appeal_id).values(old_appeal)
+        if field not in ["status", "text"]:
+            continue
+        if field == "status" and (appeal[field] != StatusTasks.reopen
+                                  or (old_appeal_dict["status"] != StatusTasks.canceled
+                                  and old_appeal_dict["status"] != StatusTasks.closed)):
+            continue
+        elif appeal[field] is not None:
+            old_appeal_dict[field] = appeal[field]
+    if old_appeal_dict != dict(old_appeal):
+        old_appeal_dict["date_edit"] = datetime.utcnow()
+    query = appeals.update().where(appeals.c.id == appeal_id).values(old_appeal_dict)
     result_id = await database.execute(query)
     await notify_update_appeal(appeal_id, user)
     return await get_appeal_db(appeal_id)
@@ -134,24 +155,33 @@ async def update_appeal(appeal_id: int, appeal: AppealUpdate, user: UserTable) -
 
 async def update_dev_appeal(appeal_id: int, appeal: AppealUpdate, user: UserTable) -> AppealDB:
     old_appeal = await get_appeal_db(appeal_id)
+
     if old_appeal.status == StatusTasks.closed or old_appeal.status == StatusTasks.canceled:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=Errors.APPEAL_IS_CLOSED)
     appeal = appeal.dict(exclude_unset=True)
+
     if "status" in appeal and (appeal["status"] == StatusTasks.closed or appeal["status"] == StatusTasks.canceled):
         appeal["date_processing"] = datetime.utcnow()
+
     if "responsible_id" in appeal and old_appeal.status == StatusTasks.new:
         appeal["status"] = StatusTasks.registered
+
     if "importance" in appeal:
-        if appeal["importance"] < 0:
+        if appeal["importance"] < 1:
             appeal["importance"] = 1
         if appeal["importance"] > 5:
             appeal["importance"] = 5
-    old_appeal = dict(old_appeal)
+
+    old_appeal_dict = dict(old_appeal)
     for field in appeal:
         if appeal[field] is not None:
-            old_appeal[field] = appeal[field]
-    query = appeals.update().where(appeals.c.id == appeal_id).values(old_appeal)
-    result_id = await database.execute(query)
+            old_appeal_dict[field] = appeal[field]
+
+    if old_appeal_dict != dict(old_appeal):
+        old_appeal_dict["date_edit"] = datetime.utcnow()
+
+    query = appeals.update().where(appeals.c.id == appeal_id).values(old_appeal_dict)
+    await database.execute(query)
     await notify_update_appeal(appeal_id, user)
     return await get_appeal_db(appeal_id)
 
@@ -215,7 +245,7 @@ async def check_access(appeal_id: int, user: UserTable, status_code: status):
     return appeal
 
 
-async def get_next_status(appeal_id: int, user: UserTable):
+async def get_next_status(appeal_id: int, user: UserTable) -> List[StatusTasks]:
     appeal = await get_appeal_db(appeal_id)
     current_status = appeal.status
     if user.is_superuser:
@@ -225,8 +255,12 @@ async def get_next_status(appeal_id: int, user: UserTable):
             return [StatusTasks.in_work]
         elif current_status is StatusTasks.in_work:
             return [StatusTasks.closed, StatusTasks.canceled]
+        elif current_status is StatusTasks.reopen:
+            return [StatusTasks.in_work]
+        else:
+            return []
     elif current_status is StatusTasks.closed or current_status is StatusTasks.canceled:
-        return [StatusTasks.in_work]
+        return [StatusTasks.reopen]
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=Errors.USER_CAN_NOT_CHANGE_STATUS)
 
@@ -273,8 +307,8 @@ async def delete_attachment(attachment_id: int) -> None:
 async def notify_create_appeal(appeal_id: int, user: UserTable) -> None:
     appeal = await get_appeal_db(appeal_id)
     client = await get_client_db(appeal.client_id)
-    message = f"Представителем закачика {client.name} - {user.name} {user.surname} " \
-              f"было создано обращение №{appeal_id} - {appeal.topic}"
+    message = f"Представителем закачика «{client.name}» - {user.name} {user.surname} " \
+              f"было создано обращение №{appeal_id} - «{appeal.topic}»"
     developers = await get_developers()
     for developer in developers:
         await notify_user(developer.email, message)
@@ -283,7 +317,7 @@ async def notify_create_appeal(appeal_id: int, user: UserTable) -> None:
 
 async def notify_update_appeal(appeal_id: int, user: UserTable) -> None:
     appeal = await get_appeal_db(appeal_id)
-    message = f"Обращение №{appeal_id} - {appeal.topic} было измененно"
+    message = f"Обращение №{appeal_id} - «{appeal.topic}» было измененно"
     if user.is_superuser:
         author = await get_or_404(UUID4(appeal.author_id))
         to_addr = author.email
@@ -299,7 +333,7 @@ async def notify_update_appeal(appeal_id: int, user: UserTable) -> None:
 
 async def notify_comment(appeal_id: int, user: UserTable) -> None:
     appeal = await get_appeal_db(appeal_id)
-    message = f"В обращении №{appeal_id} - {appeal.topic} был оставлен комментарий"
+    message = f"В обращении №{appeal_id} - «{appeal.topic}» был оставлен комментарий"
     if user.is_superuser:
         author = await get_or_404(UUID4(appeal.author_id))
         to_addr = author.email
@@ -313,7 +347,7 @@ async def notify_comment(appeal_id: int, user: UserTable) -> None:
 
 async def notify_attachment(appeal_id: int, user: UserTable) -> None:
     appeal = await get_appeal_db(appeal_id)
-    message = f"В обращении №{appeal_id} - {appeal.topic} были изменены вложения"
+    message = f"В обращении №{appeal_id} - «{appeal.topic}» были изменены вложения"
     if user.is_superuser:
         author = await get_or_404(UUID4(appeal.author_id))
         to_addr = author.email
