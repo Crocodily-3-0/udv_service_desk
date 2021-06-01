@@ -26,7 +26,7 @@ async def create_licence(licence: LicenceCreate, user: UserTable = Depends(devel
     return await add_licence(licence)
 
 
-@router.put("/{id}", response_model=LicenceDB, status_code=status.HTTP_201_CREATED)
+@router.patch("/{id}", response_model=LicenceDB, status_code=status.HTTP_201_CREATED)
 async def update_licence_by_id(id: int, item: LicenceUpdate, user: UserTable = Depends(developer_user)):
     return await update_licence(id, item)
 

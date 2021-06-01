@@ -92,13 +92,18 @@ async def get_count_dev_appeals(developer_id: str) -> int:
     return len(result)  # TODO проверить не будет ли ошибки на len(None)
 
 
+async def get_developers_db() -> List[UserDB]:
+    query = users.select().where(users.c.is_superuser == 1)
+    result = await database.fetch_all(query=query)
+    return [UserDB(**dict(developer)) for developer in result]
+
+
 async def get_developers() -> List[DeveloperList]:
     query = users.select().where(users.c.is_superuser == 1)
     result = await database.fetch_all(query=query)
     developers = []
     for developer in result:
         developer = dict(developer)
-        print(developer)
         count_appeals = await get_count_dev_appeals(str(developer["id"]))
         developers.append(DeveloperList(**dict({**developer, "count_appeals": count_appeals})))
     return developers

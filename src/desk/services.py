@@ -1,19 +1,18 @@
 import shutil
 from datetime import datetime
-from typing import List, Union, Optional, Dict
+from typing import List, Optional, Dict
 
 from pydantic.types import UUID4
 
-from .schemas import AppealCreate, CommentCreate, AppealUpdate, CommentUpdate, AppealList, AppealDB, Appeal, DevAppeal, \
-    AppealsPage, AttachmentDB, AttachmentCreate
-from ..accounts.client_account.models import clients
+from .schemas import AppealCreate, CommentCreate, AppealUpdate, CommentUpdate, AppealList, AppealDB, Appeal, \
+    DevAppeal, AppealsPage, AttachmentDB, AttachmentCreate
 from ..accounts.client_account.services import get_client_db, get_client
+from ..accounts.developer_account.statistics.schemas import StatusesDistribution, StatusStatistics
 from ..db.db import database
 from .models import appeals, comments, attachments
 from ..errors import Errors
-from ..reference_book.models import softwares, modules
-from ..reference_book.services import get_software, get_module, get_modules, get_software_list, get_software_db_list
-from ..users.logic import get_developers, get_or_404, get_user, get_client_users
+from ..reference_book.services import get_software, get_module, get_modules, get_software_db_list
+from ..users.logic import get_developers, get_or_404, get_user
 from ..users.models import UserTable, users
 from .models import StatusTasks
 from ..service import check_dict, send_mail, Email
@@ -39,6 +38,91 @@ async def get_appeals(user: UserTable) -> List[AppealList]:
         appeal = dict(appeal)
         appeals_list.append(await get_appeal_list(appeal))
     return appeals_list
+
+
+async def get_appeals_by_developer(developer_id: str) -> List[AppealDB]:
+    query = appeals.select().where(appeals.c.responsible_id == developer_id)
+    result = await database.fetch_all(query=query)
+    return [AppealDB(**dict(appeal)) for appeal in result]
+
+
+async def get_appeals_by_client(client_id: int) -> List[AppealDB]:
+    query = appeals.select().where(appeals.c.client_id == client_id)
+    result = await database.fetch_all(query=query)
+    return [AppealDB(**dict(appeal)) for appeal in result]
+
+
+async def get_appeals_by_software(software_id: int) -> List[AppealDB]:
+    query = appeals.select().where(appeals.c.software_id == software_id)
+    result = await database.fetch_all(query=query)
+    return [AppealDB(**dict(appeal)) for appeal in result]
+
+
+async def get_appeals_by_module(module_id: int) -> List[AppealDB]:
+    query = appeals.select().where(appeals.c.module_id == module_id)
+    result = await database.fetch_all(query=query)
+    return [AppealDB(**dict(appeal)) for appeal in result]
+
+
+async def get_appeals_db() -> List[AppealDB]:
+    result = await database.fetch_all(appeals.select())
+    return [AppealDB(**dict(appeal)) for appeal in result]
+
+
+async def get_status_distribution(appeals_list: List[AppealDB]) -> StatusesDistribution:
+    new = 0
+    registered = 0
+    in_work = 0
+    closed = 0
+    canceled = 0
+    reopen = 0
+    for appeal in appeals_list:
+        if appeal.status == StatusTasks.new:
+            new += 1
+        elif appeal.status == StatusTasks.registered:
+            registered += 1
+        elif appeal.status == StatusTasks.in_work:
+            in_work += 1
+        elif appeal.status == StatusTasks.closed:
+            closed += 1
+        elif appeal.status == StatusTasks.canceled:
+            canceled += 1
+        elif appeal.status == StatusTasks.reopen:
+            reopen += 1
+    return StatusesDistribution(new=new,
+                                registered=registered,
+                                in_work=in_work,
+                                closed=closed,
+                                canceled=canceled,
+                                reopen=reopen)
+
+
+async def get_statuses_list(appeals_list: List[AppealDB]) -> List[StatusStatistics]:
+    statuses_list = []
+    statuses = {
+        "new": 0,
+        "registered": 0,
+        "in_work": 0,
+        "closed": 0,
+        "canceled": 0,
+        "reopen": 0,
+    }
+    for appeal in appeals_list:
+        if appeal.status == StatusTasks.new:
+            statuses["new"] += 1
+        elif appeal.status == StatusTasks.registered:
+            statuses["registered"] += 1
+        elif appeal.status == StatusTasks.in_work:
+            statuses["in_work"] += 1
+        elif appeal.status == StatusTasks.closed:
+            statuses["closed"] += 1
+        elif appeal.status == StatusTasks.canceled:
+            statuses["canceled"] += 1
+        elif appeal.status == StatusTasks.reopen:
+            statuses["reopen"] += 1
+    for current_status in statuses:
+        statuses_list.append(StatusStatistics(name=current_status, count_appeals=statuses[current_status]))
+    return statuses_list
 
 
 async def get_appeal_list(appeal: Dict) -> AppealList:
@@ -141,14 +225,14 @@ async def update_appeal(appeal_id: int, appeal: AppealUpdate, user: UserTable) -
             continue
         if field == "status" and (appeal[field] != StatusTasks.reopen
                                   or (old_appeal_dict["status"] != StatusTasks.canceled
-                                  and old_appeal_dict["status"] != StatusTasks.closed)):
+                                      and old_appeal_dict["status"] != StatusTasks.closed)):
             continue
         elif appeal[field] is not None:
             old_appeal_dict[field] = appeal[field]
     if old_appeal_dict != dict(old_appeal):
         old_appeal_dict["date_edit"] = datetime.utcnow()
     query = appeals.update().where(appeals.c.id == appeal_id).values(old_appeal_dict)
-    result_id = await database.execute(query)
+    await database.execute(query)
     await notify_update_appeal(appeal_id, user)
     return await get_appeal_db(appeal_id)
 

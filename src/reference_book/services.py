@@ -1,5 +1,4 @@
 from fastapi import HTTPException, status
-from pydantic.types import UUID4
 
 from .schemas import ModuleCreate, LicenceCreate, SoftwareCreate, EmployeeLicenceCreate, EmployeeLicenceUpdate, \
     SoftwareUpdate, SoftwareDB, Software, ModuleDB, ModuleUpdate, LicenceDB, Licence, LicenceUpdate, \
@@ -247,14 +246,14 @@ async def get_licence_db(licence_id: int) -> Optional[LicenceDB]:
 
 
 async def get_licence_by_number(licence_number: int) -> Optional[LicenceDB]:
-    result = await database.fetch_one(licences.select().where(licences.c.id == licence_number))
+    result = await database.fetch_one(licences.select().where(licences.c.number == int(licence_number)))
     if result:
         return LicenceDB(**dict(result))
     return None
 
 
 async def add_licence(licence: LicenceCreate) -> LicenceDB:
-    if await get_licence_by_number(licence.number) is not None:
+    if await get_licence_by_number(licence.number):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Errors.LICENCE_IS_EXIST,
@@ -270,13 +269,19 @@ async def add_licence(licence: LicenceCreate) -> LicenceDB:
 
 
 async def update_licence(licence_id: int, licence: LicenceUpdate) -> LicenceDB:
-    if await get_licence_db(licence_id) is None:
+    old_licence = await get_licence_db(licence_id)
+    if old_licence is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Errors.LICENCE_IS_NOT_EXIST,
         )
-    query = licences.update().where(licences.c.id == licence_id).values(**licence.dict())
-    await database.execute(query)
+    licence = dict(licence)
+    old_licence = dict(old_licence)
+    for field in licence:
+        if licence[field]:
+            old_licence[field] = licence[field]
+    query = licences.update().where(licences.c.id == licence_id).values(**old_licence)
+    result = await database.execute(query=query)
     return await get_licence_db(licence_id)
 
 

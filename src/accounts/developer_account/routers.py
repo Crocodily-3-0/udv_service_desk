@@ -7,6 +7,8 @@ from .services import get_developer, add_developer, delete_developer
 from src.users.models import UserTable
 from src.users.logic import developer_user, get_developers, change_pwd, pre_update_developer, get_email_with_changed_pwd
 from src.users.schemas import UserDB, UserUpdate, DeveloperList, DeveloperCreate
+from .statistics.routers import statistics_router
+
 
 developer_router = APIRouter()
 
@@ -43,3 +45,6 @@ async def change_dev_pwd(id: UUID4, new_pwd: str, user: UserTable = Depends(deve
 @developer_router.delete("/{id:uuid}", response_class=Response, status_code=status.HTTP_204_NO_CONTENT)
 async def delete_developer_by_id(id: UUID4, user: UserTable = Depends(developer_user)):
     await delete_developer(id)
+
+
+developer_router.include_router(statistics_router, prefix='/statistics', tags=['Statistics'])

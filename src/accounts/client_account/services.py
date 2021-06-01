@@ -43,12 +43,17 @@ async def get_count_employees(client_id: int) -> int:
     return len(result)  # TODO проверить не будет ли ошибки
 
 
+async def get_clients_db() -> List[ClientDB]:
+    result = await database.fetch_all(clients.select())
+    return [ClientDB(**dict(client)) for client in result]
+
+
 async def get_clients() -> List[ClientShort]:
     result = await database.fetch_all(clients.select())
     clients_list = []
     for client in result:
         client = dict(client)
-        owner = await get_or_404(client["owner_id"])
+        owner = await get_or_404(UUID4(str(client["owner_id"])))
         count_employees = await get_count_employees(client["id"])
         clients_list.append(ClientShort(**dict({**client,
                                                 "owner": owner,

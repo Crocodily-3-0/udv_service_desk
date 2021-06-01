@@ -60,8 +60,9 @@ class LicenceCreate(LicenceBase):
     software_id: int
 
 
-class LicenceUpdate(BaseModel):
-    pass
+class LicenceUpdate(LicenceBase):
+    count_members: Optional[int]
+    date_end: Optional[datetime]
 
 
 class LicenceDB(LicenceBase):
