@@ -48,7 +48,7 @@ async def get_clients() -> List[ClientShort]:
     clients_list = []
     for client in result:
         client = dict(client)
-        owner = await get_client_owner(client["id"])
+        owner = await get_or_404(client["owner_id"])
         count_employees = await get_count_employees(client["id"])
         clients_list.append(ClientShort(**dict({**client, "owner": owner, "count_employees": count_employees})))
     return clients_list
@@ -85,14 +85,15 @@ async def get_dev_client_page(client_id: int) -> DevClientPage:
 
 async def get_client(client_id: int) -> Optional[Client]:
     query = clients.select().where(clients.c.id == client_id)
-    result = await database.fetch_one(query=query)
-    if result is None:
+    client = await database.fetch_one(query=query)
+    if client is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Errors.CLIENT_NOT_FOUND)
-    owner = await get_client_owner(client_id)
+    client = dict(client)
+    owner = await get_or_404(client["owner_id"])
     licences_list = await get_client_licences(client_id)
-    return Client(**dict({**dict(result),
+    return Client(**dict({**client,
                           "owner": owner,
                           "licences": licences_list}))
 
@@ -122,6 +123,7 @@ async def add_client(data: ClientAndOwnerCreate) -> Optional[ClientDB]:
         password=data.password,
         name=data.owner_name,
         surname=data.surname,
+        patronymic=data.patronymic,
         avatar=data.owner_avatar,
         client_id=client_id,
         is_owner=True,
