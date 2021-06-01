@@ -17,7 +17,7 @@ from ...reference_book.services import add_client_licence, get_client_licences, 
 from ...users.logic import all_users, get_or_404, pre_update_user, user_is_active
 from ...users.models import users
 from ...users.schemas import UserCreate, OwnerCreate, Employee, UserDB, EmployeeList, EmployeeUpdate
-from ...service import send_mail
+from ...service import send_mail, Email
 
 
 async def get_count_appeals(employee_id: str) -> int:
@@ -191,8 +191,13 @@ async def add_owner(client_id: int, owner: OwnerCreate):
             detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
         )
 
-    message = f"Добро пожаловать в UDV Service Desk!\n\n" \
-              f"Ваш логин в системе: {owner.email}\nВаш пароль: {owner.password}"
-    await send_mail(owner.email, "Вы зарегистрированы в системе", message)
+    await send_mail_with_owner_pwd(owner)
     updated_owner = await update_client_owner(client_id, created_owner.id)
     return updated_owner
+
+
+async def send_mail_with_owner_pwd(user: OwnerCreate) -> None:
+    message = f"Добро пожаловать в UDV Service Desk!\n\n" \
+              f"Ваш логин в системе: {user.email}\nВаш пароль: {user.password}"
+    email = Email(recipient=user.email, title="Регистрация в UDV Service Desk", message=message)
+    await send_mail(email)

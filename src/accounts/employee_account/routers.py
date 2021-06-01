@@ -5,7 +5,8 @@ from pydantic.types import UUID4
 
 from .services import add_employee, get_count_allowed_employees, get_employee, delete_employee, block_employee
 from src.errors import Errors
-from src.users.logic import get_owner, any_user, get_client_users_with_superuser, pre_update_user, change_pwd
+from src.users.logic import get_owner, any_user, get_client_users_with_superuser, pre_update_user, change_pwd, \
+    get_email_with_changed_pwd
 from src.users.models import UserTable
 from src.users.schemas import UserDB, PreEmployeeCreate, EmployeeUpdate
 from ..client_account.schemas import EmployeePage
@@ -59,7 +60,8 @@ async def block_employee_by_id(id: int, pk: UUID4, user: UserTable = Depends(any
 @employee_router.patch("/{id}/employees/{pk}/pwd", response_model=UserDB, status_code=status.HTTP_201_CREATED)
 async def change_employee_pwd(id: int, pk: UUID4, new_pwd: str, user: UserTable = Depends(any_user)):
     if str(user.id) == str(pk):
-        return await change_pwd(pk, new_pwd)
+        email = await get_email_with_changed_pwd(new_pwd, user)
+        return await change_pwd(pk, new_pwd, email)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 

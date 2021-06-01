@@ -5,7 +5,7 @@ from pydantic.types import UUID4
 
 from .services import get_developer, add_developer, delete_developer
 from src.users.models import UserTable
-from src.users.logic import developer_user, get_developers, change_pwd, pre_update_developer
+from src.users.logic import developer_user, get_developers, change_pwd, pre_update_developer, get_email_with_changed_pwd
 from src.users.schemas import UserDB, UserUpdate, DeveloperList, DeveloperCreate
 
 developer_router = APIRouter()
@@ -33,8 +33,9 @@ async def update_developer_by_id(id: UUID4, item: UserUpdate, user: UserTable = 
 
 @developer_router.patch("/{id:uuid}/pwd", response_model=UserDB, status_code=status.HTTP_201_CREATED)
 async def change_dev_pwd(id: UUID4, new_pwd: str, user: UserTable = Depends(developer_user)):
-    if user.id == id:
-        return await change_pwd(id, new_pwd)
+    if str(user.id) == str(id):
+        email = await get_email_with_changed_pwd(new_pwd, user)
+        return await change_pwd(id, new_pwd, email)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 

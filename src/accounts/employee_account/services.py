@@ -8,7 +8,7 @@ from src.accounts.client_account.schemas import EmployeePage
 from src.accounts.client_account.services import get_client, get_employees
 from src.db.db import database
 from src.reference_book.services import get_client_licences, add_employee_licence
-from src.service import send_mail
+from src.service import send_mail, Email
 from src.users.logic import all_users, update_user, delete_user, get_or_404
 from src.users.models import users
 from src.users.schemas import EmployeeCreate, PreEmployeeCreate, UserDB, UserUpdate
@@ -48,9 +48,15 @@ async def add_employee(id: int, user: PreEmployeeCreate) -> UserDB:
     licence_id = user.licence_id
     licence = await add_employee_licence(created_user.id, licence_id)
 
-    message = f"Добро пожаловать в UDV Service Desk!\n\nВаш логин в системе: {user.email}\nВаш пароль: {user.password}"
-    await send_mail(user.email, "Вы зарегистрированы в системе", message)
+    await send_mail_with_pwd(user)
     return created_user
+
+
+async def send_mail_with_pwd(user: PreEmployeeCreate) -> None:
+    message = f"Добро пожаловать в UDV Service Desk!\n\n" \
+              f"Ваш логин в системе: {user.email}\nВаш пароль: {user.password}"
+    email = Email(recipient=user.email, title="Регистрация в UDV Service Desk", message=message)
+    await send_mail(email)
 
 
 async def delete_employee(pk: UUID4):

@@ -104,8 +104,8 @@ async def get_developers() -> List[DeveloperList]:
     return developers
 
 
-async def get_or_404(id: UUID4) -> UserDB:
-    user = await database.fetch_one(query=users.select().where(users.c.id == id))
+async def get_or_404(user_id: UUID4) -> UserDB:
+    user = await database.fetch_one(query=users.select().where(users.c.id == user_id))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -113,34 +113,34 @@ async def get_or_404(id: UUID4) -> UserDB:
     return user
 
 
-async def get_user(id: UUID4) -> Optional[UserDB]:
-    user = await database.fetch_one(query=users.select().where(users.c.id == id))
+async def get_user(user_id: UUID4) -> Optional[UserDB]:
+    user = await database.fetch_one(query=users.select().where(users.c.id == user_id))
     return user
 
 
-async def pre_update_user(id: UUID4, item: EmployeeUpdate) -> UserDB:
+async def pre_update_user(user_id: UUID4, item: EmployeeUpdate) -> UserDB:
     if item.licence_id:
-        licence = await update_employee_licence(str(id), item.licence_id)
+        licence = await update_employee_licence(str(user_id), item.licence_id)
     update_employee = UserUpdate(**dict(item))
     update_dict = update_employee.dict(exclude_unset=True,
                                        exclude={"id", "email", "is_superuser", "is_verified"})
-    updated_user = await update_user(id, update_dict)
+    updated_user = await update_user(user_id, update_dict)
     return updated_user
 
 
-async def pre_update_developer(id: UUID4, item: UserUpdate) -> UserDB:
+async def pre_update_developer(user_id: UUID4, item: UserUpdate) -> UserDB:
     update_dict = item.dict(exclude_unset=True, exclude={"id"})
     if "email" in update_dict.keys():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Errors.FORBIDDEN_CHANGE_EMAIL
         )
-    updated_developer = await update_user(id, update_dict)
+    updated_developer = await update_user(user_id, update_dict)
     return updated_developer
 
 
-async def update_user(id: UUID4, update_dict: Dict[str, Any]) -> UserDB:
-    user = await get_or_404(id)
+async def update_user(user_id: UUID4, update_dict: Dict[str, Any]) -> UserDB:
+    user = await get_or_404(user_id)
     user = dict(user)
     for field in update_dict:
         if field == "password" and update_dict[field]:
@@ -153,8 +153,8 @@ async def update_user(id: UUID4, update_dict: Dict[str, Any]) -> UserDB:
     return updated_user
 
 
-async def delete_user(id: UUID4):
-    user = await get_or_404(id)
+async def delete_user(user_id: UUID4):
+    user = await get_or_404(user_id)
     await user_db.delete(user)
     return None
 
@@ -194,19 +194,27 @@ async def get_user_by_email(email: EmailStr) -> UserDB:
     return user
 
 
-async def change_pwd(id: UUID4, pwd: str) -> UserDB:
+async def change_pwd(user_id: UUID4, pwd: str, email: Email) -> UserDB:
     if len(pwd) < 6:
         raise ValueError('Password should be at least 6 characters')
     updated_user = EmployeeUpdate(**dict({"password": pwd}))
-    updated_user = await pre_update_user(id, updated_user)
+    updated_user = await pre_update_user(user_id, updated_user)
 
+    await send_mail(email)
+    return updated_user
+
+
+async def get_email_with_changed_pwd(pwd: str, user: UserTable) -> Email:
     message = f"Добрый день!\nВы изменили свой пароль на: {pwd}\n" \
               f"Если Вы не меняли пароль обратитесь к администратору или смените его самостоятельно"
-    await send_mail(updated_user.email, "Вы зарегистрированы в системе", message)
-    return updated_user
+    email = Email(recipient=user.email, title="Смена пароля в UDV Service Desk", message=message)
+    return email
 
 
 async def get_new_password(email: EmailStr) -> UserDB:
     user = await get_user_by_email(email)
     pwd = generate_pwd()
-    return await change_pwd(user.id, pwd)
+    message = f"Добрый день!\nВаш новый пароль: {pwd}\n" \
+              f"Если Вы не запрашивали смену пароля обратитесь к администратору или смените его самостоятельно"
+    email = Email(recipient=user.email, title="Смена пароля в UDV Service Desk", message=message)
+    return await change_pwd(user.id, pwd, email)
