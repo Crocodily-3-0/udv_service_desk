@@ -50,7 +50,9 @@ async def get_clients() -> List[ClientShort]:
         client = dict(client)
         owner = await get_or_404(client["owner_id"])
         count_employees = await get_count_employees(client["id"])
-        clients_list.append(ClientShort(**dict({**client, "owner": owner, "count_employees": count_employees})))
+        clients_list.append(ClientShort(**dict({**client,
+                                                "owner": owner,
+                                                "count_employees": count_employees})))
     return clients_list
 
 
@@ -91,7 +93,7 @@ async def get_client(client_id: int) -> Optional[Client]:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Errors.CLIENT_NOT_FOUND)
     client = dict(client)
-    owner = await get_or_404(client["owner_id"])
+    owner = await get_or_404(UUID4(str(client["owner_id"])))
     licences_list = await get_client_licences(client_id)
     return Client(**dict({**client,
                           "owner": owner,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, Response, HTTPException, UploadFile
+from fastapi import APIRouter, status, Depends, Response, HTTPException, UploadFile, File
 from typing import List, Union
 
 from .services import get_all_appeals, get_appeal, get_comments, get_comment, \
@@ -76,7 +76,7 @@ async def get_attachment_by_id(id: int, pk: int, user: UserTable = Depends(any_u
 
 
 @router.post("/{id}/attachments/", response_model=AttachmentDB, status_code=status.HTTP_201_CREATED)
-async def upload_attachments(id: int, file: UploadFile, user: UserTable = Depends(any_user)):
+async def upload_attachments(id: int, file: UploadFile = File(...), user: UserTable = Depends(any_user)):
     await check_access(id, user, status.HTTP_403_FORBIDDEN)
     return await upload_attachment(id, file, user)
 
