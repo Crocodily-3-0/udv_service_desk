@@ -30,7 +30,6 @@ class Appeal(Base):
     software_id = Column(Integer, ForeignKey('software.id'), nullable=False)
     module_id = Column(Integer, ForeignKey('module.id'), nullable=False)
     importance = Column(Integer, default=1)
-    # attachments
 
 
 class Comment(Base):
@@ -43,5 +42,16 @@ class Comment(Base):
     date_create = Column(DateTime(timezone=True), server_default=sql.func.now())
 
 
+class Attachment(Base):
+    __tablename__ = 'attachment'
+
+    id = Column(Integer, primary_key=True, index=True, unique=True)
+    filename = Column(String(300), nullable=False)
+    appeal_id = Column(Integer, ForeignKey('appeal.id'), nullable=False)
+    author_id = Column(String, ForeignKey('user.id'), nullable=False)
+    date_create = Column(DateTime(timezone=True), server_default=sql.func.now())
+
+
 appeals = Appeal.__table__
 comments = Comment.__table__
+attachments = Attachment.__table__

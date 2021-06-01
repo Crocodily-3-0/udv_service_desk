@@ -41,6 +41,23 @@ class CommentShort(CommentBase):
     date_create: datetime
 
 
+class AttachmentBase(BaseModel):
+    filename: str
+
+
+class AttachmentCreate(AttachmentBase):
+    appeal_id: int
+    author_id: str
+    date_create: datetime = datetime.utcnow()
+
+
+class AttachmentDB(AttachmentBase):
+    id: int
+    appeal_id: int
+    author_id: str
+    date_create: datetime
+
+
 class AppealBase(BaseModel):
     topic: str
     importance: int
