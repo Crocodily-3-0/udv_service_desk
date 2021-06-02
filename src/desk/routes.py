@@ -1,11 +1,11 @@
 from fastapi import APIRouter, status, Depends, Response, HTTPException, UploadFile, File
-from typing import List, Union, Optional
+from typing import List
 
 from .services import get_all_appeals, get_appeal, get_comments, get_comment, \
     add_appeal, add_comment, update_appeal, update_comment, delete_comment, get_appeals_page, upload_attachment, \
     delete_attachment, get_attachment, update_dev_appeal, check_access, get_dev_appeal
-from .schemas import Appeal, CommentShort, Comment, AppealCreate, CommentCreate, CommentDB, \
-    AppealUpdate, AppealDB, AppealShort, CommentUpdate, DevAppeal, AttachmentDB, AppealList, AppealsPage
+from .schemas import CommentShort, Comment, AppealCreate, CommentCreate, CommentDB, \
+    AppealUpdate, AppealDB, CommentUpdate, AttachmentDB
 from ..users.models import UserTable
 from ..users.logic import employee, any_user
 
@@ -13,10 +13,10 @@ router = APIRouter()
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
-async def appeals_list(user: UserTable = Depends(any_user)):
+async def appeals_list(last_id: int = 0, limit: int = 9, user: UserTable = Depends(any_user)):
     if user.is_superuser:
-        return await get_all_appeals()
-    return await get_appeals_page(user)
+        return await get_all_appeals(last_id, limit)
+    return await get_appeals_page(user, last_id, limit)
 
 
 @router.get("/{id}", status_code=status.HTTP_200_OK)

@@ -5,7 +5,8 @@ from pydantic.types import UUID4
 
 from .services import get_developer, add_developer, delete_developer
 from src.users.models import UserTable
-from src.users.logic import developer_user, get_developers, change_pwd, pre_update_developer, get_email_with_changed_pwd
+from src.users.logic import developer_user, get_developers, change_pwd, pre_update_developer, \
+    get_email_with_changed_pwd, default_uuid
 from src.users.schemas import UserDB, UserUpdate, DeveloperList, DeveloperCreate
 from .statistics.routers import statistics_router
 
@@ -14,8 +15,8 @@ developer_router = APIRouter()
 
 
 @developer_router.get("/", response_model=List[DeveloperList], status_code=status.HTTP_200_OK)
-async def developers_list(user: UserTable = Depends(developer_user)):
-    return await get_developers()
+async def developers_list(user: UserTable = Depends(developer_user), last_id: UUID4 = default_uuid, limit: int = 9):
+    return await get_developers(last_id, limit)
 
 
 @developer_router.get("/{id:uuid}", response_model=UserDB, status_code=status.HTTP_200_OK)

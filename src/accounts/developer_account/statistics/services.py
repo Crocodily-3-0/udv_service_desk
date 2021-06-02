@@ -5,7 +5,7 @@ from src.accounts.developer_account.statistics.schemas import AppealsStatistics,
     DevelopersStatistics, DeveloperStatistics, SoftwareStatistics, ModuleStatistics, StatusStatistics, ClientStatistics
 from src.desk.services import get_appeals_by_developer, get_appeals_by_client, \
     get_appeals_by_software, get_appeals_by_module, get_appeals_db, get_status_distribution, get_statuses_list
-from src.reference_book.services import get_software_db_list, get_modules
+from src.reference_book.services import get_software_db_list, get_modules_db
 from src.users.logic import get_developers_db
 
 
@@ -20,7 +20,7 @@ async def get_software_list_stat() -> List[SoftwareStatistics]:
 
 
 async def get_module_list_stat() -> List[ModuleStatistics]:
-    modules = await get_modules()
+    modules = await get_modules_db()
     modules_list = []
     for module in modules:
         appeals = await get_appeals_by_module(module.id)

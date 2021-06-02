@@ -1,22 +1,19 @@
-from typing import List, Union
+from fastapi import APIRouter, Depends, status, HTTPException
+from pydantic.types import UUID4
 
-from fastapi import APIRouter, Depends, status, Request, HTTPException
-from .schemas import ClientDB, Client, ClientCreate, ClientUpdate, ClientAndOwnerCreate, ClientsPage, ClientPage, \
-    DevClientPage
-from .services import get_clients, get_client, add_client, update_client, add_owner, get_client_owner, update_client_owner, \
-    get_clients_page, get_client_page, block_client, get_dev_client_page, get_client_info
+from .schemas import ClientDB, Client, ClientUpdate, ClientAndOwnerCreate, ClientsPage
+from .services import add_client, update_client, get_clients_page, get_client_page, \
+    block_client, get_dev_client_page, get_client_info
 from src.users.models import UserTable
-from src.users.logic import developer_user, any_user, get_client_users_with_superuser, get_owner_with_superuser, \
-    get_client_users
+from src.users.logic import developer_user, any_user, get_owner_with_superuser, get_client_users, default_uuid
 from ..employee_account.routers import employee_router
-from ...users.schemas import UserCreate
 
 client_router = APIRouter()
 
 
 @client_router.get("/", response_model=ClientsPage, status_code=status.HTTP_200_OK)
-async def clients_list(user: UserTable = Depends(developer_user)):
-    return await get_clients_page()
+async def clients_list(user: UserTable = Depends(developer_user), last_id: int = 0, limit: int = 9):
+    return await get_clients_page(last_id, limit)
 
 
 @client_router.post("/", response_model=ClientDB, status_code=status.HTTP_201_CREATED)
@@ -25,11 +22,11 @@ async def create_client(item: ClientAndOwnerCreate, user: UserTable = Depends(de
 
 
 @client_router.get("/{id}", status_code=status.HTTP_200_OK)
-async def client(id: int, user: UserTable = Depends(any_user)):
+async def client(id: int, user: UserTable = Depends(any_user), last_id: UUID4 = default_uuid, limit: int = 9):
     if user.is_superuser:
-        return await get_dev_client_page(id)
+        return await get_dev_client_page(id, last_id, limit)
     elif await get_client_users(id, user):
-        return await get_client_page(id)
+        return await get_client_page(id, last_id, limit)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 

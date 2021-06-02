@@ -4,6 +4,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from fastapi_users.router import ErrorCode
 from pydantic.types import UUID4
+from sqlalchemy import desc
 
 from .schemas import ClientCreate, ClientUpdate, ClientAndOwnerCreate, ClientsPage, ClientShort, ClientPage, ClientDB, \
     Client, DevClientPage
@@ -14,7 +15,7 @@ from ...errors import Errors
 from ...reference_book.schemas import LicenceDB
 from ...reference_book.services import add_client_licence, get_client_licences, get_software_db_list, \
     add_employee_licence, get_employee_licence, get_licences_db
-from ...users.logic import all_users, get_or_404, pre_update_user, user_is_active, get_user_by_email
+from ...users.logic import all_users, get_or_404, pre_update_user, user_is_active, get_user_by_email, default_uuid
 from ...users.models import users
 from ...users.schemas import UserCreate, OwnerCreate, Employee, UserDB, EmployeeList, EmployeeUpdate
 from ...service import send_mail, Email
@@ -26,8 +27,10 @@ async def get_count_appeals(employee_id: str) -> int:
     return len(result)
 
 
-async def get_employees(client_id: int) -> List[EmployeeList]:
-    result = await database.fetch_all(users.select().where(users.c.client_id == client_id))
+async def get_employees(client_id: int, last_id: UUID4 = default_uuid, limit: int = 9) -> List[EmployeeList]:
+    query = users.select()\
+        .where((users.c.client_id == client_id) & (users.c.id > str(last_id))).order_by(desc(users.c.id)).limit(limit)
+    result = await database.fetch_all(query=query)
     employees_list = []
     for employee in result:
         employee = dict(employee)
@@ -47,8 +50,9 @@ async def get_clients_db() -> List[ClientDB]:
     return [ClientDB(**dict(client)) for client in result]
 
 
-async def get_clients() -> List[ClientShort]:
-    result = await database.fetch_all(clients.select())
+async def get_clients(last_id: int = 0, limit: int = 9) -> List[ClientShort]:
+    query = clients.select().where(clients.c.id > last_id).limit(limit)
+    result = await database.fetch_all(query=query)
     clients_list = []
     for client in result:
         client = dict(client)
@@ -60,8 +64,8 @@ async def get_clients() -> List[ClientShort]:
     return clients_list
 
 
-async def get_clients_page() -> ClientsPage:
-    clients_list = await get_clients()
+async def get_clients_page(last_id: int = 0, limit: int = 9) -> ClientsPage:
+    clients_list = await get_clients(last_id, limit)
     licences_list = await get_licences_db()
     return ClientsPage(**dict({"clients_list": clients_list, "licences_list": licences_list}))
 
@@ -71,18 +75,18 @@ async def get_client_info(client_id: int) -> Client:
     return client
 
 
-async def get_client_page(client_id: int) -> ClientPage:
+async def get_client_page(client_id: int, last_id: UUID4 = default_uuid, limit: int = 9) -> ClientPage:
     client = await get_client(client_id)
-    employees_list = await get_employees(client_id)
+    employees_list = await get_employees(client_id, last_id, limit)
     licences_list = await get_client_licences(client_id)
     return ClientPage(**dict({"client": client,
                               "employees_list": employees_list,
                               "licences_list": licences_list}))
 
 
-async def get_dev_client_page(client_id: int) -> DevClientPage:
+async def get_dev_client_page(client_id: int, last_id: UUID4 = default_uuid, limit: int = 9) -> DevClientPage:
     client = await get_client(client_id)
-    employees_list = await get_employees(client_id)
+    employees_list = await get_employees(client_id, last_id, limit)
     software_list = await get_software_db_list()
     return DevClientPage(**dict({"client": client,
                                  "employees_list": employees_list,

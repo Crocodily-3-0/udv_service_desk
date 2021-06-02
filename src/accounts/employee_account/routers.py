@@ -15,12 +15,6 @@ from ..client_account.services import update_client_owner
 employee_router = APIRouter()
 
 
-# @employee_router.get("/{id}/employees", response_model=List[UserDB], status_code=status.HTTP_200_OK)
-# async def employees_list(id: int, user: UserTable = Depends(any_user)):
-#     user = await get_client_users_with_superuser(id, user)
-#     return await get_employees(id)
-
-
 @employee_router.get("/{id}/employees/{pk}", response_model=Optional[EmployeePage], status_code=status.HTTP_200_OK)
 async def employee(id: int, pk: UUID4, user: UserTable = Depends(any_user)):
     user = await get_client_users_with_superuser(id, user)

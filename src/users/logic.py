@@ -5,6 +5,7 @@ from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import JWTAuthentication
 from fastapi_users.password import get_password_hash
 from fastapi_users.router import ErrorCode
+from sqlalchemy import desc
 
 from ..config import SECRET
 from .schemas import User, UserCreate, UserUpdate, UserDB, DeveloperList, generate_pwd, EmployeeUpdate, DeveloperCreate
@@ -37,6 +38,9 @@ all_users = FastAPIUsers(
 any_user = all_users.current_user(active=True)
 employee = all_users.current_user(active=True, superuser=False)
 developer_user = all_users.current_user(active=True, superuser=True)
+
+
+default_uuid = UUID4("00000000-0000-0000-0000-000000000000")
 
 
 async def get_owner(client_id: int, user: UserTable = Depends(any_user)):
@@ -98,8 +102,9 @@ async def get_developers_db() -> List[UserDB]:
     return [UserDB(**dict(developer)) for developer in result]
 
 
-async def get_developers() -> List[DeveloperList]:
-    query = users.select().where(users.c.is_superuser == 1)
+async def get_developers(last_id: UUID4 = default_uuid, limit: int = 9) -> List[DeveloperList]:
+    query = users.select()\
+        .where((users.c.is_superuser == 1) & (users.c.id > str(last_id))).order_by(desc(users.c.id)).limit(limit)
     result = await database.fetch_all(query=query)
     developers = []
     for developer in result:

@@ -9,7 +9,7 @@ from .schemas import UserDB
 from ..config import SECRET
 
 from src.users.logic import jwt_authentication, all_users, \
-    on_after_forgot_password, on_after_reset_password, after_verification, after_verification_request, any_user, \
+    after_verification, after_verification_request, any_user, \
     get_new_password, create_developer
 
 router = APIRouter()
@@ -52,26 +52,10 @@ async def login(
     return {"token": token, "user": user}
 
 
-# router.include_router(
-#     all_users.get_auth_router(jwt_authentication),
-#     prefix="/auth/jwt",
-#     tags=["auth"])
 router.include_router(
     all_users.get_register_router(),
     prefix="/auth",
     tags=["auth"])
-# router.include_router(
-#     all_users.get_reset_password_router(
-#         SECRET,
-#         after_forgot_password=on_after_forgot_password,
-#         after_reset_password=on_after_reset_password),
-#     prefix="/auth",
-#     tags=["auth"])
-# router.include_router(
-#     all_users.get_users_router(),
-#     prefix="/users",
-#     tags=["users"])
-
 router.include_router(
     all_users.get_verify_router(
         SECRET,

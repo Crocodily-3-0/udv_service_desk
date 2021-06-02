@@ -1,8 +1,6 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, status, Response
 from ..schemas import Licence, LicenceCreate, LicenceDB, LicenceUpdate, LicencePage
-from ..services import get_licence, get_licences, add_licence, update_licence, delete_licence, get_licence_page
+from ..services import get_licence, add_licence, update_licence, delete_licence, get_licence_page
 from ...users.models import UserTable
 from ...users.logic import developer_user
 
@@ -10,9 +8,9 @@ router = APIRouter()
 
 
 @router.get("/", response_model=LicencePage, status_code=status.HTTP_200_OK)
-async def licence_list(user: UserTable = Depends(developer_user)):
+async def licence_list(last_id: int = 0, limit: int = 9, user: UserTable = Depends(developer_user)):
     if user.is_superuser:
-        return await get_licence_page()
+        return await get_licence_page(last_id, limit)
     return None
 
 

@@ -10,8 +10,8 @@ router = APIRouter()
 
 
 @router.get('/', response_model=SoftwarePage, status_code=status.HTTP_200_OK)
-async def software_list(user: UserTable = Depends(developer_user)):
-    return await get_software_page()
+async def software_list(last_id: int = 0, limit: int = 9, user: UserTable = Depends(developer_user)):
+    return await get_software_page(last_id, limit)
 
 
 @router.get('/{id}', response_model=Software, status_code=status.HTTP_200_OK)
@@ -24,7 +24,7 @@ async def create_software(new_software: SoftwareWithModulesCreate, user: UserTab
     return await add_software_with_modules(new_software)
 
 
-@router.put("/{id}", response_model=SoftwareDB, status_code=status.HTTP_201_CREATED)
+@router.patch("/{id}", response_model=SoftwareDB, status_code=status.HTTP_201_CREATED)
 async def update_software_by_id(id: int, item: SoftwareUpdate, user: UserTable = Depends(developer_user)):
     return await update_software(id, item)
 

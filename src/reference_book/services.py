@@ -12,8 +12,9 @@ from ..errors import Errors
 from typing import List, Optional
 
 
-async def get_software_list() -> List[Software]:
-    result = await database.fetch_all(query=softwares.select())
+async def get_software_list(last_id: int = 0, limit: int = 9) -> List[Software]:
+    query = softwares.select().where(softwares.c.id > last_id).limit(limit)
+    result = await database.fetch_all(query=query)
     list_of_software = []
     for software in result:
         software = dict(software)
@@ -27,9 +28,9 @@ async def get_software_db_list() -> List[SoftwareDB]:
     return [SoftwareDB(**dict(software)) for software in result]
 
 
-async def get_software_page() -> SoftwarePage:
-    software_list = await get_software_list()
-    modules_list = await get_modules()
+async def get_software_page(last_id: int = 0, limit: int = 9) -> SoftwarePage:
+    software_list = await get_software_list(last_id, limit)
+    modules_list = await get_modules_db()
     return SoftwarePage(**dict({"software_list": software_list, "modules_list": modules_list}))
 
 
@@ -113,9 +114,7 @@ async def get_software_module(software_id: int, module_id: int) -> Optional[Soft
 async def get_software_modules(software_id: int) -> List[ModuleDB]:
     query = software_modules.select().where(software_modules.c.software_id == software_id)
     result = await database.fetch_all(query=query)
-    list = [await get_module(software_module.module_id) for software_module in result]
-    print(list)
-    return list  # TODO проверить работу метода (software_module.module_id)
+    return [await get_module(software_module.module_id) for software_module in result]
 
 
 async def add_software_module(software_id: int, module_id: int) -> SoftwareModulesDB:
@@ -146,8 +145,14 @@ async def delete_software_module(software_id: int, module_id: int) -> None:
     await database.execute(query)
 
 
-async def get_modules() -> List[ModuleDB]:
+async def get_modules_db() -> List[ModuleDB]:
     result = await database.fetch_all(query=modules.select())
+    return [ModuleDB(**dict(module)) for module in result]
+
+
+async def get_modules(last_id: int = 0, limit: int = 9) -> List[ModuleDB]:
+    query = modules.select().where(modules.c.id > last_id).limit(limit)
+    result = await database.fetch_all(query=query)
     modules_list = []
     for module in result:
         modules_list.append(ModuleDB(**dict(module)))
@@ -211,8 +216,9 @@ async def get_licences_db() -> List[LicenceDB]:
     return licences_list
 
 
-async def get_licences() -> List[Licence]:
-    result = await database.fetch_all(query=licences.select())
+async def get_licences(last_id: int = 0, limit: int = 9) -> List[Licence]:
+    query = licences.select().where(licences.c.id > last_id).limit(limit)
+    result = await database.fetch_all(query=query)
     licences_list = []
     for licence in result:
         licence = dict(licence)
@@ -222,8 +228,8 @@ async def get_licences() -> List[Licence]:
     return licences_list
 
 
-async def get_licence_page() -> LicencePage:
-    licences_list = await get_licences()
+async def get_licence_page(last_id: int = 0, limit: int = 9) -> LicencePage:
+    licences_list = await get_licences(last_id, limit)
     software_list = await get_software_db_list()
     return LicencePage(**dict({"licences_list": licences_list, "software_list": software_list}))
 
@@ -371,7 +377,7 @@ async def get_client_licences(client_id: int) -> List[Licence]:
         client_licence = dict(client_licence)
         licence = dict(await get_licence_db(client_licence["licence_id"]))
         closed_vacancies = await get_count_employee_for_licence_id(client_licence["licence_id"])
-        software = await get_software(licence["software_id"])  # TODO разобраться с None
+        software = await get_software(licence["software_id"])
         client_licences_list.append(
             Licence(**dict({**licence, "closed_vacancies": closed_vacancies, "software": software})))
     return client_licences_list

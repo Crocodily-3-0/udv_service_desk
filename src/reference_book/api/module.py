@@ -10,8 +10,8 @@ router = APIRouter()
 
 
 @router.get('/', response_model=List[ModuleDB], status_code=status.HTTP_200_OK)
-async def modules_list(user: UserTable = Depends(developer_user)):
-    return await get_modules()
+async def modules_list(last_id: int = 0, limit: int = 9, user: UserTable = Depends(developer_user)):
+    return await get_modules(last_id, limit)
 
 
 @router.get('/{id}', response_model=ModuleDB, status_code=status.HTTP_200_OK)
@@ -24,7 +24,7 @@ async def create_module(item: ModuleCreate, user: UserTable = Depends(developer_
     return await add_module(item)
 
 
-@router.put("/{id}", response_model=ModuleDB, status_code=status.HTTP_201_CREATED)
+@router.patch("/{id}", response_model=ModuleDB, status_code=status.HTTP_201_CREATED)
 async def update_module_by_id(id: int, item: ModuleUpdate, user: UserTable = Depends(developer_user)):
     return await update_module(id, item)
 

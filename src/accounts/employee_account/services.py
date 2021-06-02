@@ -5,7 +5,7 @@ from fastapi_users.router import ErrorCode
 from pydantic.types import UUID4
 
 from src.accounts.client_account.schemas import EmployeePage
-from src.accounts.client_account.services import get_client, get_employees
+from src.accounts.client_account.services import get_client, get_count_employees
 from src.db.db import database
 from src.reference_book.services import get_client_licences, add_employee_licence
 from src.service import send_mail, Email
@@ -29,8 +29,8 @@ async def get_count_allowed_employees(client_id: int) -> int:
     client_licences = await get_client_licences(client_id)
     for licence in client_licences:
         count_allowed_employees += licence.count_members
-    client_employees = await get_employees(client_id)
-    return count_allowed_employees - len(client_employees)
+    count_employees = await get_count_employees(client_id)
+    return count_allowed_employees - count_employees
 
 
 async def add_employee(id: int, user: PreEmployeeCreate) -> UserDB:

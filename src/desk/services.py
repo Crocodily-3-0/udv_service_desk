@@ -11,8 +11,8 @@ from ..accounts.developer_account.statistics.schemas import StatusesDistribution
 from ..db.db import database
 from .models import appeals, comments, attachments
 from ..errors import Errors
-from ..reference_book.services import get_software, get_module, get_modules, get_software_db_list
-from ..users.logic import get_developers, get_or_404, get_user
+from ..reference_book.services import get_software, get_module, get_modules, get_software_db_list, get_modules_db
+from ..users.logic import get_or_404, get_user, get_developers_db
 from ..users.models import UserTable, users
 from .models import StatusTasks
 from ..service import check_dict, send_mail, Email
@@ -21,8 +21,9 @@ from fastapi import HTTPException, status, UploadFile
 from fastapi.responses import FileResponse
 
 
-async def get_all_appeals() -> List[AppealList]:
-    result = await database.fetch_all(query=appeals.select())
+async def get_all_appeals(last_id: int = 0, limit: int = 9) -> List[AppealList]:
+    query = appeals.select().where(appeals.c.id > last_id).limit(limit)
+    result = await database.fetch_all(query=query)
     appeals_list = []
     for appeal in result:
         appeal = dict(appeal)
@@ -30,8 +31,8 @@ async def get_all_appeals() -> List[AppealList]:
     return appeals_list
 
 
-async def get_appeals(user: UserTable) -> List[AppealList]:
-    query = appeals.select().where(appeals.c.client_id == user.client_id)
+async def get_appeals(user: UserTable, last_id: int = 0, limit: int = 9) -> List[AppealList]:
+    query = appeals.select().where((appeals.c.client_id == user.client_id) & (appeals.c.id > last_id)).limit(limit)
     result = await database.fetch_all(query=query)
     appeals_list = []
     for appeal in result:
@@ -140,11 +141,11 @@ async def get_appeal_list(appeal: Dict) -> AppealList:
         "module": module}))
 
 
-async def get_appeals_page(user: UserTable) -> AppealsPage:
-    appeals_list = await get_appeals(user)
+async def get_appeals_page(user: UserTable, last_id: int = 0, limit: int = 9) -> AppealsPage:
+    appeals_list = await get_appeals(user, last_id, limit)
     client = await get_client(user.client_id)
-    software_list = await get_software_db_list()
-    modules_list = await get_modules()
+    software_list = await get_software_db_list()  # TODO выдавать софт клиента
+    modules_list = await get_modules()  # TODO выдавать модули клиента
     return AppealsPage(**dict({"appeals": appeals_list,
                                "client": client,
                                "software_list": software_list,
@@ -172,9 +173,9 @@ async def get_appeal(appeal_id: int, user: UserTable) -> Appeal:
 
 
 async def get_dev_appeal(appeal_id: int, user: UserTable, appeal: Appeal) -> DevAppeal:
-    developers = await get_developers()
+    developers = await get_developers_db()
     allowed_statuses = await get_next_status(appeal_id, user)
-    modules_list = await get_modules()
+    modules_list = await get_modules_db()
     software_list = await get_software_db_list()
     result = DevAppeal(**dict({**dict(appeal),
                                "software_list": software_list,
@@ -393,7 +394,7 @@ async def notify_create_appeal(appeal_id: int, user: UserTable) -> None:
     client = await get_client_db(appeal.client_id)
     message = f"Представителем закачика «{client.name}» - {user.name} {user.surname} " \
               f"было создано обращение №{appeal_id} - «{appeal.topic}»"
-    developers = await get_developers()
+    developers = await get_developers_db()
     for developer in developers:
         await notify_user(developer.email, message)
     return None
