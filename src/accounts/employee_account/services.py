@@ -60,6 +60,7 @@ async def send_mail_with_pwd(user: PreEmployeeCreate) -> None:
 
 
 async def delete_employee(pk: UUID4):
+    # TODO заменить в обращениях пользователя автора на владельца компании
     await delete_user(pk)
 
 

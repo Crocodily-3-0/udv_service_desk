@@ -14,7 +14,7 @@ from ...errors import Errors
 from ...reference_book.schemas import LicenceDB
 from ...reference_book.services import add_client_licence, get_client_licences, get_software_db_list, \
     add_employee_licence, get_employee_licence, get_licences_db
-from ...users.logic import all_users, get_or_404, pre_update_user, user_is_active
+from ...users.logic import all_users, get_or_404, pre_update_user, user_is_active, get_user_by_email
 from ...users.models import users
 from ...users.schemas import UserCreate, OwnerCreate, Employee, UserDB, EmployeeList, EmployeeUpdate
 from ...service import send_mail, Email
@@ -52,7 +52,7 @@ async def get_clients() -> List[ClientShort]:
     clients_list = []
     for client in result:
         client = dict(client)
-        owner = await get_or_404(UUID4(str(client["owner_id"])))
+        owner = await get_or_404(UUID4(client["owner_id"]))
         count_employees = await get_count_employees(client["id"])
         clients_list.append(ClientShort(**dict({**client,
                                                 "owner": owner,
@@ -115,6 +115,11 @@ async def get_client_db(client_id: int) -> Optional[ClientDB]:
 async def add_client(data: ClientAndOwnerCreate) -> Optional[ClientDB]:
     client = ClientCreate(**dict(data))
     query = clients.insert().values({**client.dict(), "is_active": False, "owner_id": "undefined"})
+    if await get_user_by_email(data.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=Errors.COMPANY_IS_EXIST,
+        )
     try:
         client_id = await database.execute(query)
     except Exception:

@@ -190,13 +190,11 @@ async def create_developer():
     return created_developer
 
 
-async def get_user_by_email(email: EmailStr) -> UserDB:
+async def get_user_by_email(email: EmailStr) -> Optional[UserDB]:
     user = await database.fetch_one(query=users.select().where(users.c.email == email))
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=Errors.USER_NOT_FOUND)
-    return user
+    if user:
+        return user
+    return None
 
 
 async def change_pwd(user_id: UUID4, pwd: str, email: Email) -> UserDB:
@@ -218,6 +216,10 @@ async def get_email_with_changed_pwd(pwd: str, user: UserTable) -> Email:
 
 async def get_new_password(email: EmailStr) -> UserDB:
     user = await get_user_by_email(email)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Errors.USER_NOT_FOUND)
     pwd = generate_pwd()
     message = f"Добрый день!\nВаш новый пароль: {pwd}\n" \
               f"Если Вы не запрашивали смену пароля обратитесь к администратору или смените его самостоятельно"
