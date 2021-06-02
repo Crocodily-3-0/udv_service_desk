@@ -6,7 +6,7 @@ from pydantic.types import UUID4
 
 from .schemas import AppealCreate, CommentCreate, AppealUpdate, CommentUpdate, AppealList, AppealDB, Appeal, \
     DevAppeal, AppealsPage, AttachmentDB, AttachmentCreate
-from ..accounts.client_account.services import get_client_db, get_client
+from ..accounts.client_account.services import get_client_db, get_client, get_client_owner
 from ..accounts.developer_account.statistics.schemas import StatusesDistribution, StatusStatistics
 from ..db.db import database
 from .models import appeals, comments, attachments
@@ -43,6 +43,12 @@ async def get_appeals(user: UserTable, last_id: int = 0, limit: int = 9) -> List
 
 async def get_appeals_by_developer(developer_id: str) -> List[AppealDB]:
     query = appeals.select().where(appeals.c.responsible_id == developer_id)
+    result = await database.fetch_all(query=query)
+    return [AppealDB(**dict(appeal)) for appeal in result]
+
+
+async def get_appeals_by_author(author_id: str) -> List[AppealDB]:
+    query = appeals.select().where(appeals.c.author_id == author_id)
     result = await database.fetch_all(query=query)
     return [AppealDB(**dict(appeal)) for appeal in result]
 
@@ -152,6 +158,15 @@ async def get_appeals_page(user: UserTable, last_id: int = 0, limit: int = 9) ->
                                "modules_list": modules_list}))
 
 
+async def update_author(author_id: UUID4, user: UserTable):
+    author = await get_or_404(author_id)
+    appeals_list = await get_appeals_by_author(str(author_id))
+    owner = await get_client_owner(author.client_id)
+    for appeal in appeals_list:
+        updated_appeal = AppealUpdate(author_id=str(owner.id))
+        await update_dev_appeal(appeal.id, updated_appeal, user)
+
+
 async def get_appeal(appeal_id: int, user: UserTable) -> Appeal:
     appeal = await check_access(appeal_id, user, status.HTTP_404_NOT_FOUND)
     client = await get_client_db(appeal.client_id)
@@ -240,10 +255,11 @@ async def update_appeal(appeal_id: int, appeal: AppealUpdate, user: UserTable) -
 
 async def update_dev_appeal(appeal_id: int, appeal: AppealUpdate, user: UserTable) -> AppealDB:
     old_appeal = await get_appeal_db(appeal_id)
+    appeal = appeal.dict(exclude_unset=True)
 
     if old_appeal.status == StatusTasks.closed or old_appeal.status == StatusTasks.canceled:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=Errors.APPEAL_IS_CLOSED)
-    appeal = appeal.dict(exclude_unset=True)
+        if "author_id" not in appeal.keys():
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=Errors.APPEAL_IS_CLOSED)
 
     if "status" in appeal and (appeal["status"] == StatusTasks.closed or appeal["status"] == StatusTasks.canceled):
         appeal["date_processing"] = datetime.utcnow()

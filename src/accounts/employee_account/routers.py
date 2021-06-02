@@ -69,4 +69,4 @@ async def delete_employee_by_id(id: int, pk: UUID4, user: UserTable = Depends(an
             detail=Errors.IMPOSSIBLE_DELETE_OWNER,
         )
 
-    await delete_employee(pk)
+    await delete_employee(pk, user)

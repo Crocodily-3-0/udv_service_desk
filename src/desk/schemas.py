@@ -74,6 +74,7 @@ class AppealCreate(AppealBase):
 
 
 class AppealUpdate(AppealBase):
+    author_id: Optional[str]
     topic: Optional[str]
     text: Optional[str]
     status: Optional[StatusTasks]

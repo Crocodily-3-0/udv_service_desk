@@ -7,10 +7,11 @@ from pydantic.types import UUID4
 from src.accounts.client_account.schemas import EmployeePage
 from src.accounts.client_account.services import get_client, get_count_employees
 from src.db.db import database
+from src.desk.services import update_author
 from src.reference_book.services import get_client_licences, add_employee_licence
 from src.service import send_mail, Email
 from src.users.logic import all_users, update_user, delete_user, get_or_404
-from src.users.models import users
+from src.users.models import users, UserTable
 from src.users.schemas import EmployeeCreate, PreEmployeeCreate, UserDB, UserUpdate
 
 
@@ -59,8 +60,8 @@ async def send_mail_with_pwd(user: PreEmployeeCreate) -> None:
     await send_mail(email)
 
 
-async def delete_employee(pk: UUID4):
-    # TODO заменить в обращениях пользователя автора на владельца компании
+async def delete_employee(pk: UUID4, user: UserTable):
+    await update_author(pk, user)
     await delete_user(pk)
 
 
