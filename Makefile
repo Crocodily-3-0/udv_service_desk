@@ -58,7 +58,7 @@ win_format:
 
 
 up:
-	uvicorn $(CODE).app:app --reload
+	uvicorn $(CODE).app:app --host=0.0.0.0 --reload
 
 
 ci:	lint test

@@ -18,3 +18,8 @@ __pycache__/
 *.pyo
 *.pyd
 *.local
+
+# database
+test.db
+pre-production.db
+production.db
