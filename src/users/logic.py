@@ -89,7 +89,7 @@ async def after_verification(user: UserDB, request: Request):
 async def get_count_dev_appeals(developer_id: str) -> int:
     query = appeals.select().where(appeals.c.responsible_id == developer_id)
     result = await database.fetch_all(query=query)
-    return len(result)  # TODO проверить не будет ли ошибки на len(None)
+    return len(result)
 
 
 async def get_developers_db() -> List[UserDB]:

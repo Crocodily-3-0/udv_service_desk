@@ -2,7 +2,7 @@ from datetime import datetime
 import random
 
 from fastapi_users import models
-from pydantic import validator, EmailStr
+from pydantic import validator, EmailStr, BaseModel
 from typing import Optional
 
 from src.reference_book.schemas import LicenceDB
@@ -77,10 +77,10 @@ class UserUpdate(User, models.BaseUserUpdate):
 
 
 class UserDB(User, models.BaseUserDB):
-    is_active: bool = True  # TODO проверить зачем здесь был " = True"
+    is_active: bool = True
     is_owner: Optional[bool]
     client_id: Optional[int]
-    date_reg: datetime = datetime.utcnow()  # TODO проверить можно ли убрать " = datetime.utcnow()"
+    date_reg: datetime = datetime.utcnow()
     date_block: Optional[datetime]
 
 

@@ -74,7 +74,7 @@ class LicenceDB(LicenceBase):
 class Licence(LicenceBase):
     id: int
     number: int
-    closed_vacancies: int = -1  # TODO значение -1 для теста
+    closed_vacancies: int = -1
     software: SoftwareDB
 
 

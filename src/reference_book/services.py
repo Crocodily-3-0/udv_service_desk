@@ -91,7 +91,7 @@ async def update_software(software_id: int, software: SoftwareUpdate) -> Softwar
     return SoftwareDB(**dict({"id": software_id, **software.dict()}))
 
 
-async def delete_software(software_id: int) -> None:  # TODO safe delete
+async def delete_software(software_id: int) -> None:
     if get_software(software_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -242,7 +242,7 @@ async def get_licence_db(licence_id: int) -> Optional[LicenceDB]:
     result = await database.fetch_one(licences.select().where(licences.c.id == licence_id))
     if result:
         return LicenceDB(**dict(result))
-    return None  # TODO может быть стоит бросать ошибку если не нашли запись
+    return None
 
 
 async def get_licence_by_number(licence_number: int) -> Optional[LicenceDB]:
@@ -298,10 +298,7 @@ async def delete_licence(licence_id: int) -> None:
 async def get_count_employee_for_licence_id(licence_id: int) -> int:
     query = employee_licences.select().where(employee_licences.c.licence_id == licence_id)
     result = await database.fetch_all(query=query)
-    if result:
-        print(result)  # TODO посмотреть можно ли просто вывести len() без преобразования
-        return len([dict(licence) for licence in result])
-    return 0
+    return len(result)
 
 
 async def get_free_vacancy_in_licence(licence_id: int) -> int:

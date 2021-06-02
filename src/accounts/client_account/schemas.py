@@ -75,7 +75,7 @@ class ClientPage(BaseModel):
 
 class DevClientPage(BaseModel):
     client: Client
-    employees_list: List[Employee] = []
+    employees_list: List[EmployeeList] = []
     software_list: List[SoftwareDB]
 
 

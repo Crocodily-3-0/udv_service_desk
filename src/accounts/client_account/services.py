@@ -23,7 +23,7 @@ from ...service import send_mail, Email
 async def get_count_appeals(employee_id: str) -> int:
     query = appeals.select().where(appeals.c.author_id == employee_id)
     result = await database.fetch_all(query=query)
-    return len([dict(appeal) for appeal in result])
+    return len(result)
 
 
 async def get_employees(client_id: int) -> List[EmployeeList]:
@@ -39,8 +39,7 @@ async def get_employees(client_id: int) -> List[EmployeeList]:
 
 async def get_count_employees(client_id: int) -> int:
     result = await database.fetch_all(users.select().where(users.c.client_id == client_id))
-    # result = [dict(employee) for employee in employees_data]
-    return len(result)  # TODO проверить не будет ли ошибки
+    return len(result)
 
 
 async def get_clients_db() -> List[ClientDB]:
@@ -137,12 +136,12 @@ async def add_client(data: ClientAndOwnerCreate) -> Optional[ClientDB]:
         date_reg=datetime.utcnow(),
     )
     owner = await add_owner(client_id, owner)
-    owner_licence = await add_employee_licence(str(owner.id), data.owner_licence)
+    await add_employee_licence(str(owner.id), data.owner_licence)
     new_client = await get_client_db(client_id)
     return new_client
 
 
-async def update_client(client_id: int, client: ClientUpdate) -> Optional[ClientDB]:  # TODO проверить работу обновления
+async def update_client(client_id: int, client: ClientUpdate) -> Optional[ClientDB]:
     new_client_dict = dict(client)
     old_client_dict = dict(await get_client_db(client_id))
     for field in new_client_dict:

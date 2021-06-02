@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get('/', status_code=status.HTTP_200_OK)
-async def get_reference_book(user: UserTable = Depends(developer_user)):  # TODO разобраться с доступом
+async def get_reference_book(user: UserTable = Depends(developer_user)):
     licences = await licence_list(user)
     modules = await modules_list(user)
     softwares = await software_list(user)

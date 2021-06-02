@@ -24,7 +24,7 @@ async def create_client(item: ClientAndOwnerCreate, user: UserTable = Depends(de
     return await add_client(item)
 
 
-@client_router.get("/{id}", response_model=Union[ClientPage, DevClientPage], status_code=status.HTTP_200_OK)
+@client_router.get("/{id}", status_code=status.HTTP_200_OK)
 async def client(id: int, user: UserTable = Depends(any_user)):
     if user.is_superuser:
         return await get_dev_client_page(id)
